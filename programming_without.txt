@@ -1,0 +1,10 @@
+System V calling convention
+https://uclibc.org/docs/psABI-x86_64.pdf
+https://refspecs.linuxfoundation.org/elf/x86_64-abi-0.95.pdf
+https://www.intel.com/content/dam/www/public/us/en/documents/manuals/64-ia-32-architectures-software-developer-instruction-set-reference-manual-325383.pdf
+https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git/tree/arch/x86/entry/entry_64.S
+https://www.felixcloutier.com/x86/
+https://refspecs.linuxfoundation.org/elf/gabi4+/contents.html
+https://xkcd.com/378/
+www.x86-64.org/documentation/abi.pdf
+https://web.archive.org/web/20160801075139/https://www.x86-64.org/documentation/abi.pdf

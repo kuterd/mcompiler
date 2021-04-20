@@ -20,6 +20,9 @@
 // we might add a byte counting function later.
 void* dmalloc(size_t size);
 void *dzmalloc(size_t size);
+
+#define nnew(type) (type*)dzmalloc(sizeof(type))
+
 void writeLong(char *buffer, unsigned long num, size_t bytes);
 void writeInt(char *buffer, unsigned long num, size_t bytes);
 #endif

@@ -7,7 +7,7 @@
 #include <string.h>
 #include <assert.h>
 
-#include "dbuffer.h"
+#include "buffer.h"
 
 #define PRETTY_PRINT
 

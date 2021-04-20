@@ -3,7 +3,7 @@
 #include <string.h>
 #include <stddef.h>
 
-#include "dbuffer.h"
+#include "buffer.h"
 #include "elf.h"
 #include "relocation.h"
 
@@ -38,7 +38,7 @@ void emit(dbuffer_t *dbuffer) {
     header.phe_num = 1;    
 
     dbuffer_pushData(dbuffer, &header, sizeof(struct elf64_header));
-    relocation_set(&start, ABSOLUTE8, 0, offsetof(struct elf64_header, entry_point)); 
+    relocation_set(&start, ABSOLUTE, INT64, 0, offsetof(struct elf64_header, entry_point)); 
     
     struct elf64_program program = (struct elf64_program){};
     

@@ -1,14 +1,14 @@
 #include <stdio.h>
 
 #include "relocation.h"
-#include "dbuffer.h"
+#include "buffer.h"
 
 int main(int argc, char *args[]) {
     dbuffer_t dbuffer;
     dbuffer_init(&dbuffer);
     
     label_t testLabel = (label_t){};
-    relocation_set(&testLabel, RELATIVE4, -4, dbuffer.usage); 
+    relocation_set(&testLabel, RELATIVE, INT32, -4, dbuffer.usage); 
     dbuffer_pushLong(&dbuffer, 0, 4);    
     dbuffer_pushChars(&dbuffer, 0, 100);
    

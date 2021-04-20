@@ -1,5 +1,10 @@
+#ifndef X86_64_H
+#define X86_64_H 
+
 #include <stdint.h>
 #include "utils.h"
+#include "relocation.h"
+#include "codegen.h"
 
 // Registers that are bigger than 7 require a REX prefix.
 
@@ -103,19 +108,53 @@ typedef enum {
 
 // Register encoding numbers.
 
-uint8_t kReg8Number[] = {
-    REGISTER8(SECOND3, COMMA)
-};
+extern uint8_t kReg8Number[];
 
-uint8_t kReg16Number[] = {
-    REGISTER16(SECOND3, COMMA)
-};
+extern uint8_t kReg16Number[];
 
-uint8_t kReg32Number[] = {
-    REGISTER32(SECOND3, COMMA)
-};
+extern uint8_t kReg32Number[];
 
-uint8_t kReg64Number[] = {
-    REGISTER64(SECOND3, COMMA)
-};
+extern uint8_t kReg64Number[];
 
+void emit_syscall(dbuffer_t *dbuffer);
+
+void emit_jumpRel8(dbuffer_t *dbuffer, label_t *label);
+
+void emit_jumpZeroRel8(dbuffer_t *dbuffer, label_t *label);
+
+void emit_checkZero32(dbuffer_t *dbuffer, reg32 reg);
+
+void emit_checkZero64(dbuffer_t *dbuffer, reg64 reg);
+
+void emit_loadRegRBP32(dbuffer_t *dbuffer, reg32 reg, char disp);
+
+void emit_loadRegRBP64(dbuffer_t *dbuffer, reg64 reg, char disp);
+
+void emit_storeConst32(dbuffer_t *dbuffer, reg32 reg, int cons);
+
+void emit_storeConst64(dbuffer_t *dbuffer, reg64 reg, long cons);
+ 
+void emit_storeLabel64(dbuffer_t *dbuffer, reg64 reg, label_t *label);
+
+void emit_storeRegRBP64(dbuffer_t *dbuffer, reg64 reg, char disp);
+
+void emit_storeReg64(dbuffer_t *dbuffer, reg64 from, reg64 to);
+
+void emit_subConst64(dbuffer_t *dbuffer, reg64 reg, int imm);
+
+void emit_pushReg(dbuffer_t *dbuffer, reg64 reg);
+ 
+void emit_popReg(dbuffer_t *dbuffer, reg64 reg);
+
+void emit_ret(dbuffer_t *dbuffer);
+ 
+void emit_call(dbuffer_t *dbuffer, label_t *label);
+
+//TODO: MOVE THIS OUT
+int arch_getRealReg(struct variable *var);
+struct variable* arch_initFunctionArg(struct codegen *cg, int i);
+void arch_loadReg(struct codegen *cg, struct variable *var);
+void arch_functionCallArg(struct codegen *cg, struct variable *var, int i);
+ 
+ 
+#endif 

@@ -12,8 +12,12 @@ void* dmalloc(size_t size) {
 }
 
 void *dzmalloc(size_t size) {
-    void *result = dmalloc(size);
-    memset(result, 0, size);
+    void *result = calloc(size, 1);
+    if (result == NULL) {
+        puts("allocation failed");
+        exit(1);
+    }
+    return result;
 }
 
 void writeLong(char *buffer, unsigned long num, size_t bytes) {

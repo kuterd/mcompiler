@@ -1,25 +1,10 @@
-#ifndef DBUFFER_H
-#define DBUFFER_H
-
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
 #include <stdarg.h>
 #include <assert.h>
 
-#include "utils.h"
-
-#define DBUFFER_INIT 1000
-
-#define RANGE_STRING(str) ((range_t) {.ptr=(str), .size=sizeof(str) - 1})
-#define RANGE_COMPARE(r, s) range_cmp( (r), RANGE_STRING(s))
-
-// Used to represent a memory range, like std::string_view
-
-typedef struct {
-    char *ptr;
-    size_t size;
-} range_t;
+#include "buffer.h"
 
 void range_skip(range_t *range, size_t amount) { 
     assert(range->size >= amount && "invalid skip");
@@ -59,14 +44,42 @@ range_t range_copy(range_t *range) {
     return (range_t) {.ptr = buffer, .size = range->size}; 
 }
 
-// Dynamicly sized buffer.
-// Will adjust it's size to fit all elements.
-// Currently it can only grow.
-typedef struct {
-    void *buffer;
-    size_t capacity;
-    size_t usage;
-} dbuffer_t;
+int range_parseInt(range_t range) {
+    assert(range.size != 0 && "Empty range");
+   
+    // Signed int overflow is undefined behaviour. 
+    long result = 0;
+    int sign = 1;
+
+    if (*range.ptr == '-') {
+        range_skip(&range, 1);
+        sign = -1;
+    } else if (*range.ptr == '+') {
+        range_skip(&range, 1);
+    }
+
+    for (int i = 0; i < range.size; i++) {
+        result *= 10;
+        result += *range.ptr - '0';
+        //TODO: Error handling. 
+    }
+
+    return (int)(sign == -1 ? -result : result); 
+}
+
+void position_ingest(position_t *position, char c) {
+    position->offset++;
+    if (c == '\n') {
+        position->line++;
+        position->col = 0;
+    } else if (c != '\r') {
+        position->col++; 
+    }
+}
+
+void position_dump(position_t *position) {
+    printf("Line: %u, Column: %u, Offset: %u\n", position->line, position->col, position->offset);
+}
 
 void dbuffer_write(dbuffer_t *dbuffer, FILE *file) {
     fwrite(dbuffer->buffer, 1, dbuffer->usage, file);     
@@ -108,8 +121,8 @@ void dbuffer_pushStr(dbuffer_t *dbuffer, void *str) {
 void dbuffer_pushChar(dbuffer_t *dbuffer, unsigned char ch) {
     dbuffer_pushData(dbuffer, &ch, 1);
 }
+
 void dbuffer_pushLong(dbuffer_t *dbuffer, unsigned long num, size_t bytes) {
-    
     for (int i = 0; i < bytes; i++) {
         dbuffer_pushChar(dbuffer, num & 0xFF);
         num = num >> 8;
@@ -151,8 +164,37 @@ void dbuffer_pushRange(dbuffer_t *dbuffer, range_t *range) {
     dbuffer_pushData(dbuffer, range->ptr, range->size);
 }
 
+void dbuffer_pushPointer(dbuffer_t *dbuffer, void *pointer) {
+    dbuffer_ensureCap(dbuffer, sizeof(void*));
+    *(void**)dbuffer->buffer = pointer; 
+}
+
+void dbuffer_pushUIntStr(dbuffer_t *dbuffer, unsigned int number) {
+    size_t size = 0;   
+    do {
+        dbuffer_pushChar(dbuffer, '0' + number % 10);
+        number /= 10;
+        size++;
+    } while (number != 0);
+   
+    char *begin = dbuffer->buffer + dbuffer->usage - size; 
+    for (size_t i = 0, count = size / 2; i < count; i++) {
+        char tmp = begin[i];
+        begin[i] = begin[size - i - 1];
+        begin[size - i - 1] = tmp;
+    } 
+}
+
+void dbuffer_pushIntStr(dbuffer_t *dbuffer, int number) {
+    if (number < 0) {
+        dbuffer_pushChar(dbuffer, '-');
+        number = -number;
+    }
+    dbuffer_pushUIntStr(dbuffer, (unsigned int)number); 
+}
+
+
 range_t dbuffer_asRange(dbuffer_t *dbuffer) {
     return (range_t) {.ptr=dbuffer->buffer, .size=dbuffer->usage};
 }
 
-#endif

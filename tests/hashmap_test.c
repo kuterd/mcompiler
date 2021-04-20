@@ -9,26 +9,32 @@ struct test_struct {
     int id;
 };
 
-void check(hashmap_t *hm, char *asd) {
+void key_insert(hashmap_t *hm, int i) {
     struct test_struct *ts = malloc(sizeof(struct test_struct));
-
+    ts->id = i;
     struct hm_key a;
-    hm_key_initString(&a, asd);
+    hm_key_initInt(&a, i);
     hashmap_set(hm, &a, &ts->bucket);
+}
 
-    struct hm_key b;
-    hm_key_initString(&b, asd);
-    struct hm_bucket_entry *entry = hashmap_get(hm, &b); 
-    
-    assert(entry == &ts->bucket && "Wrong entry returned");
+void key_check(hashmap_t *hm, int i) {
+    struct hm_key a;
+    hm_key_initInt(&a, i);
+    struct hm_bucket_entry *bentry = hashmap_get(hm, &a);
+    struct test_struct *b = containerof(bentry, struct test_struct, bucket);
+    assert(b->id == i && "wrong entry");
 }
 
 int main() {
     hashmap_t hm;
     hashmap_init(&hm);
+    
+    for (int i = 0; i < 1000; i++) {
+        key_insert(&hm, i);
+    }
 
-    check(&hm, "asd");
-    check(&hm, "adasd");
-    check(&hm, "asd345345");
-    check(&hm, "asd");
+    for (int i = 0; i < 1000; i++) {
+        key_check(&hm, i);
+    }
+
 }

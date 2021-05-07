@@ -1,8 +1,10 @@
 #include "parser.h"
+#include "format.h"
+#include "dot_builder.h"
 
 // ---- Tokenizer ----
 char *token_type_names[] = {
-    TOKEN_TYPES(STR_COMMA)
+    TK_TOKEN_TYPES(STR_COMMA)
 };
 
 //@return is 1 if EOF.
@@ -162,20 +164,6 @@ char *kASTNodeName[] = {
     AST_NODE_TYPE(STR_COMMA2)
 };
 
-/*
-
-#define GEN_CASE(enu, prefix)                                        \
-    case enu:                                                        \
-        visitor->visit_##prefix(visitor, AST_AS_TYPE(node, prefix)); \
-        break;
-void ast_visit(struct ast_visitor *visitor, struct ast_node *node) {
-   switch(node->type) {
-//        AST_NODE_TYPE(GEN_CASE)
-   } 
-}
-
-*/
-
 #define VISIT_NO_CHILD(enu)                          \
     case enu:                                        \
         *childCount = 0;                             \
@@ -204,25 +192,36 @@ void ast_getChilds(struct ast_node *node, size_t *childCount, struct ast_node **
      }
 }
 
-void indent(size_t i) {
-    for (size_t ii = 0; ii < i; ii++)
-        putc('\t', stdout);
+void ident_dbuffer(dbuffer_t *buffer, size_t i) { 
+    dbuffer_pushChars(buffer, '\t', i);
 }
 
-void ast_nodeInfo(struct ast_node *node, size_t i) {
-    indent(i); 
-    printf("AST Node: %s\n", kASTNodeName[node->type]);
+void ast_nodeInfoBuffer(struct ast_node *node, dbuffer_t *buffer, size_t i) {
+    ident_dbuffer(buffer, i);
+    format_dbuffer("Node Type: {str}", buffer, kASTNodeName[node->type]);
     
     switch(node->type) {
         case NUMBER:
-            indent(i + 1);
-            printf("Number: %d\n", AST_AS_TYPE(node, number)->num);
+            ident_dbuffer(buffer, i);
+            format_dbuffer("({int})", buffer, AST_AS_TYPE(node, number)->num);
             break;
         case BINARY_EXP:
-            indent(i + 1);
-            printf("op: %s\n", token_type_names[AST_AS_TYPE(node, binary_exp)->op]);
-            break; 
+            ident_dbuffer(buffer, i);
+            format_dbuffer("({str})", buffer, token_type_names[AST_AS_TYPE(node, binary_exp)->op]);
+            break;
+        case VARIABLE:
+            ident_dbuffer(buffer, i);
+            format_dbuffer("({range})", buffer, AST_AS_TYPE(node, variable)->varName); 
+            break;
     } 
+}
+
+void ast_nodeInfo(struct ast_node *node, size_t i) {
+    dbuffer_t dbuffer;
+    dbuffer_init(&dbuffer);
+    ast_nodeInfoBuffer(node, &dbuffer, i);
+    dbuffer_pushChar(&dbuffer, 0);
+    puts(dbuffer.buffer);
 }
 
 void ast_dump(struct ast_node *node, size_t i) {
@@ -236,12 +235,46 @@ void ast_dump(struct ast_node *node, size_t i) {
     } 
 }
 
+void _ast_dumpDot(struct ast_node *node, struct Graph *graph) {
+    size_t childCount;
+    struct ast_node **childs;
+    ast_getChilds(node, &childCount, &childs);
+    
+    char nodeId[MAX_NODE_ID];
+    getNodeId(node, nodeId);
+    
+    dbuffer_t buffer;
+    dbuffer_init(&buffer);
+    dbuffer_pushStr(&buffer, "label=\"");
+    ast_nodeInfoBuffer(node, &buffer, 0);
+    dbuffer_pushChar(&buffer, '\"');
+    dbuffer_pushChar(&buffer, 0);
+    graph_setNodeProps(graph, nodeId, buffer.buffer);
+    free(buffer.buffer);
+
+    for (size_t ii = 0; ii < childCount; ii++) {
+        char childId[MAX_NODE_ID];
+        getNodeId(childs[ii], childId); 
+        graph_addEdge(graph, nodeId, childId);
+        _ast_dumpDot(childs[ii], graph);
+    } 
+}
+
+char* ast_dumpDot(struct ast_node *node) {
+    struct Graph graph;
+    graph_init(&graph, "ast", 1);
+    
+    _ast_dumpDot(node, &graph); 
+
+    char *r = graph_finalize(&graph);
+    return r;
+}
+
 /// ---- Parser ----
 
 // TODO: error formating.
 #define parser_check(check, error_print) if (!(check)) { parser->error = format error ; return NULL; }
 #define parser_check_silent(check) if(!(check)) return NULL;
-
 
 struct token parser_peekToken(parser_t *parser) {
     if (!parser->hasPeek)
@@ -298,14 +331,6 @@ int getPresedence(enum token_type type) {
     }
 }
 
-/*
-struct ast_prefix(struct token token, struct ast_node *node) {
-    
-}
-*/
-
- 
-
 // prefix expression, number, paranthesis expression. 
 struct ast_node* parser_readAtomInternal(parser_t *parser, int hasPrefix) {
     struct token tok = parser_next(parser); 
@@ -324,6 +349,10 @@ struct ast_node* parser_readAtomInternal(parser_t *parser, int hasPrefix) {
         struct ast_number *number = ast_number_new(); 
         number->num = range_parseInt(tok.range);
         return &number->node;
+    } else if (tok.type == TK_ID) {
+        struct ast_variable *variable = ast_variable_new();
+        variable->varName = tok.range;
+        return &variable->node;
     }
 }
 

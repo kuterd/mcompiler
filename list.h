@@ -15,4 +15,6 @@ struct list_head {
 int list_empty(struct list_head *lst);
 void list_add(struct list_head *lst, struct list_head *e);
 void list_deattach(struct list_head *elem);
+void list_addAfter(struct list_head *b, struct list_head *e);
+
 #endif

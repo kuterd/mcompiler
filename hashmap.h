@@ -1,27 +1,36 @@
 // Kuter Dinel 2021
-// Intrusive hash map based on linked lists.
+// Intrusive hash map based on linked lists. This interface can also be used as a unordered set.
 
 #ifndef HASHMAP_H 
 #define HASHMAP_H 
 
 #include "buffer.h"
 #include "list.h"
+#include "zone_alloc.h"
 
 #define HM_INITIAL_BUCKET_SIZE 100
 
-enum hm_key_type {
-    EMPTY = 0,
-    INT,
-    RANGE
-};
+// Default key types.
+extern struct hm_key_type intKeyType; 
+extern struct hm_key_type rangeKeyType;
+extern struct hm_key_type ptrKeyType;
 
 struct hm_key {
     union {
         int i_key;
         range_t range_key;
+        
+        // Depending on the key type ptr could either be extended key info
+        // or the key itself(ptr key).
+        void *ptr;
     };
     unsigned long hash;
-    enum hm_key_type type;
+};
+
+// hashset abstract key type.
+struct hm_key_type {
+    int (*isKeyEqual)(struct hm_key *a, struct hm_key *b);
+    void (*hashKey)(struct hm_key *key);
 };
 
 // The intrusive entry part
@@ -34,7 +43,7 @@ struct hm_bucket_entry {
 // bucket entry implementation for pointer types.
 // don't use this unless you have to.
 // embeding a hm_bucket_entry to the struct is better.
-struct m_bucket_pointer {
+struct hm_bucket_pointer {
     struct hm_bucket_entry entry;
     void *pointer;
 };
@@ -44,145 +53,93 @@ typedef struct {
     struct list_head *buckets; 
     size_t bucketCount;
     size_t size;
+   
+    struct hm_key_type keyType; 
 } hashmap_t;
 
-// djb hash function
-unsigned long djb(range_t range) {
-    unsigned long hash = 5381;
-    int c;
-    
-    while (range.size > 0) {
-        hash = ((hash << 5) + hash) + *(char*)(range.ptr++);
-        range.size--;
-    }
-    return hash;
-}
+typedef struct {
+    hashmap_t hashmap;
+    zone_allocator zone;
+} hashset_t;
 
-// if the key contains a reference to memory location it is expected to last the
-// entire lifetime of the hm_key.
-void hm_key_init(struct hm_key *key) {
-   switch(key->type) {
-    case INT:
-        key->hash = (unsigned long)key->i_key;
-        break;
-    case RANGE:
-        key->hash = djb(key->range_key);
-        break;
-   } 
-}
+// Initialize hashet key.
+void hm_key_init(hashmap_t *hm, struct hm_key *key);
 
-// string is expected to last the entire lifetime of the hm_key
-void hm_key_initString(struct hm_key *key, char *string) {
-    key->range_key = range_fromString(string);
-    key->type = RANGE;
-    hm_key_init(key);
-}
+// Check if hashset keys are equal.
+int hm_key_compare(hashmap_t *hm, struct hm_key *a, struct hm_key *b);
 
-void hm_key_initInt(struct hm_key *key, int i) {
-    key->i_key = i;
-    key->type = INT;
-    hm_key_init(key);
-}
+// Init the hashmap, specifying the initial table size.
+void hashmap_inits(hashmap_t *hm, struct hm_key_type kType, size_t bucketCount);
 
-int hm_key_compare(struct hm_key *a, struct hm_key *b) {
-    assert(a->type == b->type && "Key types must be equal !!");
-    assert(a->hash == b->hash && "Hashes must be equal !!"); 
-    switch(a->type) {
-    case INT:
-        return a->i_key == b->i_key;
-    case RANGE:
-        return range_cmp(a->range_key, b->range_key); 
-   }    
-}
+// Init the hashset.
+void hashmap_init(hashmap_t *hm, struct hm_key_type kType);
 
-void hashmap_inits(hashmap_t *hm, size_t bucketCount) {
-    hm->buckets = dzmalloc(sizeof(struct list_head) * bucketCount);  
-    hm->bucketCount = bucketCount;
-    hm->size = 0;
-}
+// Rehash the hashset.
+void hashmap_rehash(hashmap_t *hm);
 
-void hashmap_init(hashmap_t *hm) {
-    hashmap_inits(hm, HM_INITIAL_BUCKET_SIZE); 
-}
+// Free to hashset.
+void hashmap_free(hashmap_t *hm);
 
-struct list_head* _hashmap_locateBucket(hashmap_t *hm, struct hm_key *key) {
-    size_t offset = key->hash % hm->bucketCount; 
-    return hm->buckets + offset;
-}
+// Set to hashset.
+void hashmap_set(hashmap_t *hm, struct hm_key *key, struct hm_bucket_entry *entry);
 
-struct hm_bucket_entry* _hashmap_findInBucket(struct list_head *bucket, struct hm_key *key) {
-    if (bucket->next == NULL)
-        return NULL;
+// Get from hashset.
+struct hm_bucket_entry* hashmap_get(hashmap_t *hm, struct hm_key *key);
 
-    LIST_FOR_EACH(bucket) {
-        struct hm_bucket_entry *entry = containerof(c, struct hm_bucket_entry, colisions);
-        if (hm_key_compare(key, &entry->key))
-            return entry;            
-    }
-    return NULL;
-}
+// -- Convinience methods -- 
 
-void hashmap_rehash(hashmap_t *hm) {
-    puts("Rehashing !!!!!!!"); 
-    int oldCount = hm->bucketCount; 
-    hm->bucketCount *= 2;
-    struct list_head *old = hm->buckets;
-    hm->buckets = dzmalloc(sizeof(struct list_head) * hm->bucketCount);  
+// Set range to hashset.
+void hashmap_setRange(hashmap_t *hm, range_t range, struct hm_bucket_entry *entry);
 
-    for (int i = 0; i < oldCount; i++) {
-        struct list_head *head = &old[i]; 
-        if (head->next == NULL)
-            continue;
-        for (struct list_head *c = head->next, *next = c->next; c != head; c = next) {
-            next = c->next;
-            struct hm_bucket_entry *entry = containerof(c, struct hm_bucket_entry, colisions);
-            struct list_head *newBucket = _hashmap_locateBucket(hm, &entry->key); 
-            if (newBucket->next == NULL)
-                LIST_INIT(newBucket);
-            list_add(newBucket, c); 
-        } 
-    }
-}
+// Get range from hashset.
+struct hm_bucket_entry* hashmap_getRange(hashmap_t *hm, range_t range);
 
-void hashmap_set(hashmap_t *hm, struct hm_key *key, struct hm_bucket_entry *entry) {
-    struct list_head *bucket = _hashmap_locateBucket(hm, key);  
-    struct hm_bucket_entry *foundEntry = _hashmap_findInBucket(bucket, key);
-    
-    if (foundEntry) { // if there is a entry already, remove it.
-        list_deattach(&foundEntry->colisions);
-        hm->size--;        
-    }
-    entry->key = *key;
-    if (bucket->next == NULL)
-        LIST_INIT(bucket);
-    list_add(bucket, &entry->colisions);
-    hm->size++;
-    
-    // Do we need rehashing ?
-    if ((hm->size * 100) / (hm->bucketCount) < 80) 
-        return;
-    
-    hashmap_rehash(hm);
-} 
+// Set int to hashset.
+void hashmap_setInt(hashmap_t *hm, int ikey, struct hm_bucket_entry *entry);
 
-struct hm_bucket_entry* hashmap_get(hashmap_t *hm, struct hm_key *key) {
-    struct list_head *bucket = _hashmap_locateBucket(hm, key);  
-    return _hashmap_findInBucket(bucket, key);
-}
+// Get int from hashmap.
+struct hm_bucket_entry* hashmap_getInt(hashmap_t *hm, int ikey);
 
-void hashmap_setRange(hashmap_t *hm, range_t range, struct hm_bucket_entry *entry) {
-    struct hm_key key;
-    key.range_key = range;
-    key.type = RANGE;
-    hashmap_set(hm, &key, entry); 
-}
+// Set pointer to hashmap.
+void hashmap_setPtr(hashmap_t *hm, void *key, struct hm_bucket_entry *entry);
 
-struct hm_bucket_entry* hashmap_getRange(hashmap_t *hm, range_t range) {
-    struct hm_key key;
-    key.range_key = range;
-    key.type = RANGE;
-    return hashmap_get(hm, &key);
-}
+// Get pointer from the hashmap.
+struct hm_bucket_entry* hashmap_getPtr(hashmap_t *hm, void *key);
 
+// Iterator
+
+struct hashmap_it {
+    hashmap_t *hm;
+    // Index of the current bucket.
+    size_t bucket;
+    // Position inside the bucket.
+    struct list_head bucketPos;
+};
+
+struct hashmap_it hashmap_it_init(hashmap_t *hm);
+struct hashmap_it hashmap_it_next(struct hashmap_it *it);
+struct hm_bucket_entry* hashmap_it_get(struct hashmap_it *it);
+
+// -- Hash set --
+
+// Initialize the hashset.
+void hashset_init(hashset_t *hs, struct hm_key_type kType);
+
+//free the hashset
+void hashset_free(hashset_t *hs);
+
+// -- hashset Convineience methods -- 
+
+// Insert pointer to hashset.
+int hashset_insertPtr(hashset_t *hs, void *ptr);
+
+// Check if pointer exists in hashset.
+int hashset_existsPtr(hashset_t *hs, void *ptr);
+
+// Insert in to hashset
+int hashset_insertInt(hashset_t *hs, int ikey);
+
+// Check if int exists in hashset 
+int hashset_existsInt(hashset_t *hs, int ikey);
 
 #endif

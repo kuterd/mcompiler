@@ -19,7 +19,7 @@
 // malloc that you can assume will always return a valid pointer.
 // we might add a byte counting function later.
 void* dmalloc(size_t size);
-void *dzmalloc(size_t size);
+void* dzmalloc(size_t size);
 
 #define nnew(type) (type*)dzmalloc(sizeof(type))
 

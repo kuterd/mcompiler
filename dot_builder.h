@@ -6,10 +6,12 @@
 #include <stdlib.h>
 #include <string.h>
 #include <assert.h>
+#include <stdio.h>
 
 #include "buffer.h"
 
 #define PRETTY_PRINT
+#define MAX_NODE_ID (sizeof(void*) * 2)
 
 struct Graph {
     int isDirected;
@@ -77,8 +79,13 @@ void graph_setNodeProps(struct Graph *graph, char *nodeName, char *props) {
 
 char* graph_finalize(struct Graph *graph) {
   _("}");
-  dbuffer_pushChar(&graph->buffer, 0); // null terminate.
+  dbuffer_pushChar(&graph->dbuffer, 0); // null terminate.
   return (char*)graph->dbuffer.buffer; 
+}
+
+//TODO: refactor this function.
+void getNodeId(void *node, char *result) {
+    snprintf(result, MAX_NODE_ID, "node_%x", (unsigned int)node); 
 }
 
 #undef _

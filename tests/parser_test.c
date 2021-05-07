@@ -1,8 +1,8 @@
 #include "parser.h"
-
+#include "format.h"
 
 int main() {
-    char *exp = "10 + (20 * 30) + (10 * 30 + 10)";
+    char *exp = "a + (20 * 30) + (10 * 30 + 10)";
     range_t expRange = range_fromString(exp);
     parser_t parser;
     parser_init(&parser, expRange);

@@ -13,7 +13,7 @@ enum reloc_size {
     INT32,
     INT64
 };
-
+// TODO: Platform specific stuff ?
 enum reloc_type {
     RELATIVE,
     ABSOLUTE 

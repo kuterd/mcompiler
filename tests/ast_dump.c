@@ -1,19 +1,18 @@
 #include "parser.h"
 #include "utils.h"
 
-
 int main() {
-    struct ast_function function;
-    function.node.type = FUNCTION;
-    function.childCount = 0;
+        
+    char *exp = "(a + 30 + 10)";
+    range_t expRange = range_fromString(exp);
+    
+    parser_t parser;
+    parser_init(&parser, expRange);
+    struct ast_node *node = parser_parseExpression(&parser);
+ 
+    char *result = ast_dumpDot(node);
 
-    struct ast_module module;     
-    module.node.type = MODULE;
-    module.childs = nnew(struct ast_node*);
-    module.childs[0] = &function.node;
-    module.childCount = 1; 
-    ast_dump(&module.node, 0);
-
+    puts(result);
 
     return 0;
 }

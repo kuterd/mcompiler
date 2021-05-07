@@ -3,6 +3,7 @@
 #include <string.h>
 #include <stdarg.h>
 #include <assert.h>
+#include <limits.h>
 
 #include "buffer.h"
 
@@ -60,8 +61,12 @@ int range_parseInt(range_t range) {
 
     for (int i = 0; i < range.size; i++) {
         result *= 10;
-        result += *range.ptr - '0';
-        //TODO: Error handling. 
+        result += range.ptr[i] - '0';
+        if (sign == 1 && result >= INT_MAX) 
+            break;
+        else if (sign == -1 && result - 1 >= INT_MAX)
+            break;
+        //FIXME: Error handling. 
     }
 
     return (int)(sign == -1 ? -result : result); 
@@ -107,6 +112,19 @@ void dbuffer_ensureCap(dbuffer_t *dbuffer, size_t size) {
      }
 }
 
+void dbuffer_removeRange(dbuffer_t *dbuffer, size_t offset, size_t size) {
+    assert(dbuffer->usage >= size && "Invalid size");
+    assert(offset < dbuffer->usage && "Invalid offset");
+        
+    size_t offsetEnd = offset + size;
+
+    // Move memory that comes after the range to the begining.
+    memmove(dbuffer->buffer + offset, dbuffer->buffer + offsetEnd, dbuffer->usage - offsetEnd);
+
+    // Reduce the usage since we removed @size bytes.    
+    dbuffer->usage -= size; 
+}
+
 void dbuffer_pushData(dbuffer_t *dbuffer, void *buffer, size_t size) {
     dbuffer_ensureCap(dbuffer, size);
     memcpy(dbuffer->buffer + dbuffer->usage, buffer, size);
@@ -135,7 +153,6 @@ void dbuffer_pushInt(dbuffer_t *dbuffer, unsigned int num, size_t bytes) {
     //num = num << (4 - bytes) * 8;
     
     for (int i = 0; i < bytes; i++) {
-        printf("%d\n", num);
         dbuffer_pushChar(dbuffer, num & 0xFF);
         num = num >> 8;
     }
@@ -166,7 +183,34 @@ void dbuffer_pushRange(dbuffer_t *dbuffer, range_t *range) {
 
 void dbuffer_pushPointer(dbuffer_t *dbuffer, void *pointer) {
     dbuffer_ensureCap(dbuffer, sizeof(void*));
-    *(void**)dbuffer->buffer = pointer; 
+    dbuffer_pushData(dbuffer, &pointer, sizeof(void*));
+}
+
+void dbuffer_popPointer(dbuffer_t *dbuffer) {
+    dbuffer->usage -= sizeof(void*);
+}
+
+void dbuffer_pushUIntHexStr(dbuffer_t *dbuffer, unsigned int number) {
+    size_t size = 0;   
+    do {
+        char f = number % 16;
+        
+        if (f < 10)
+            f += '0';
+        else
+            f += 'A';
+
+        dbuffer_pushChar(dbuffer, '0' + number % 10);
+        number /= 10;
+        size++;
+    } while (number != 0);
+   
+    char *begin = dbuffer->buffer + dbuffer->usage - size; 
+    for (size_t i = 0, count = size / 2; i < count; i++) {
+        char tmp = begin[i];
+        begin[i] = begin[size - i - 1];
+        begin[size - i - 1] = tmp;
+    } 
 }
 
 void dbuffer_pushUIntStr(dbuffer_t *dbuffer, unsigned int number) {
@@ -197,4 +241,19 @@ void dbuffer_pushIntStr(dbuffer_t *dbuffer, int number) {
 range_t dbuffer_asRange(dbuffer_t *dbuffer) {
     return (range_t) {.ptr=dbuffer->buffer, .size=dbuffer->usage};
 }
+
+void dbuffer_swap(dbuffer_t *a, dbuffer_t *b) {
+    dbuffer_t bk = *a;
+    *a = *b;
+    *b = bk; 
+}
+
+void dbuffer_clear(dbuffer_t *dbuffer) {
+    dbuffer->usage = 0;
+}
+
+void dbuffer_free(dbuffer_t *dbuffer) {
+    free(dbuffer->buffer);
+}
+
 

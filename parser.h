@@ -4,7 +4,7 @@
 #include "utils.h"
 #include "buffer.h"
 
-#define TOKEN_TYPES(o) \
+#define TK_TOKEN_TYPES(o) \
     o(TK_EEOF)        \
     o(TK_ERROR)       \
     o(TK_ID)          \
@@ -23,7 +23,7 @@
     o(TK_PARAN_CLOSE) \
 
 enum token_type {
-    TOKEN_TYPES(COMMA)
+    TK_TOKEN_TYPES(COMMA)
 };
 
 struct token {
@@ -124,7 +124,7 @@ struct ast_binary_exp {
 
 struct ast_number {
     struct ast_node node;
-    int num;
+    int64_t num;
 };
 
 struct ast_variable { 
@@ -157,52 +157,12 @@ struct ast_return {
     AST_TYPE(prefix)* ast_##prefix##_new();
 
 AST_NODE_TYPE(GEN_NEW_DECLERATION)
-/*
-#define GEN_VISITOR(enu, prefix)                                                      \
-    void (*visit_##prefix)(struct ast_visitor *visitor, struct ast_##prefix *pref); \
-
-// structure for visiting ast.
-struct ast_visitor {
-    AST_NODE_TYPE(GEN_VISITOR)
-    void *info;
-};
-
-#define GEN_CASE(enu, prefix)                                        \
-    case enu:                                                        \
-        visitor->visit_##prefix(visitor, AST_AS_TYPE(node, prefix)); \
-        break;
-
-        void ast_visit(struct ast_visitor *visitor, struct ast_node *node) {
-   switch(node->type) {
-//        AST_NODE_TYPE(GEN_CASE)
-   } 
-}
-
-#define GEN_CONST_CHILD(enu, prefix, chCount)        \
-    case enu:                                        \
-        *childs = AST_AS_TYPE(node, prefix)->childs; \
-        childCount = chCount;                        \
-        break;
-
-#define GEN_VARIABLE_CHILD(enu, prefix)                    \
-    case enu:                                              \
-        *childs = AST_AS_TYPE(node, prefix)->childs;         \
-        childCount = AST_AS_TYPE(node, prefix)->childCount; 
-
-void ast_visitChilds(struct ast_visitor *visitor, struct ast_node *node) {
-    size_t childCount;
-    struct ast_node **childs; 
-
-    switch(node->type) {
-       //AST_NODE_CONST_CHILD(NODE_CONST_PASS, GEN_CONST_CHILD);
-
-    }
-}
-*/
+#undef GEN_NEW_DECLERATION
 
 void ast_nodeInfo(struct ast_node *node, size_t i);
 void ast_dump(struct ast_node *node, size_t i);
-
+char* ast_dumpDot(struct ast_node *node);
+ 
 void token_dumpAll(char *string);
 
 struct reader {
@@ -218,7 +178,8 @@ typedef struct {
 } parser_t;
 
 struct ast_node* parser_parseExpression(parser_t *parser);
-
+void parser_init(parser_t *parser, range_t range);
+ 
 #undef COMMA2
 #undef STR_COMMA2
 #undef FIRST2

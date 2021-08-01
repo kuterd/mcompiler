@@ -30,7 +30,7 @@ void _visit(struct dominators *dom, dbuffer_t *postorder, struct basic_block *bl
     
     // Assign a number.    
    data->number = postorder->usage / sizeof(void*);
-   dbuffer_pushPointer(postorder, block);
+   dbuffer_pushPtr(postorder, block);
 }
 
 size_t dominators_getNumber(struct dominators *dom, struct basic_block *block) {
@@ -147,7 +147,7 @@ void domfrontiers_compute(struct domfrontiers *df, struct dominators *doms) {
             
             while (runner != dom) {
                 struct df_element *dfElem = _df_getElement(df, runner); 
-                dbuffer_pushPointer(&dfElem->dlist, block);
+                dbuffer_pushPtr(&dfElem->dlist, block);
                 runner = runnerDom; 
                 runnerDom = dominators_getIDom(doms, runner);
             }

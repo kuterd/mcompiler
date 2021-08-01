@@ -21,7 +21,7 @@
 #define INSTRUCTIONS(o)                 \
     o(INST_PHI, phi)                    \
     o(INST_LOAD_VAR, load_var)          \
-    o(INST_ASIGN_VAR,asign_var)         \
+    o(INST_ASSIGN_VAR,assign_var)       \
     o(INST_BINARY, binary)              \
     o(INST_JUMP, jump)                  \
     o(INST_JUMP_COND, jump_cond)        \
@@ -76,11 +76,14 @@ struct function {
 };
 
 struct basic_block {
-    // We consider a block value.
+    // We consider basic block a value.
     // NOTE: Should this be a pointer too ? 
     struct value value;
     // linked list of instructions.
     struct list_head instructions;
+    
+    // The function that contains this block.
+    struct function *parent;
 };
 
 struct instruction;
@@ -121,7 +124,6 @@ struct inst_phi {
     size_t useCount;
     
     struct use **uses;
-    struct block **blocks;
 };
 
 enum binary_ops {
@@ -150,7 +152,7 @@ struct inst_load_var {
     struct use *uses[0];
 };
 
-struct inst_asign_var {
+struct inst_assign_var {
     struct instruction inst;
     size_t rId;
     
@@ -189,27 +191,31 @@ struct ir_print_annotations {
 };
 
 void value_setName(struct ir_context *ctx, struct value *value, range_t name);
+range_t value_getName(struct ir_context *ctx, struct value *value);
 
 void function_dump(struct ir_context *ctx, struct function *fun, struct ir_print_annotations *annotations);
 void function_dumpDot(struct ir_context *ctx, struct function *fun, struct ir_print_annotations *annotations);
+void inst_dump(struct ir_context *ctx, struct instruction *inst);
+//void block_dump(struct ir_context *ctx, struct basic_block *block);
 
 void ir_context_init(struct ir_context *context);
 void ir_context_free(struct ir_context *context);
 
 struct inst_load_var* inst_new_load_var(struct ir_context *ctx, size_t i, enum data_type type); 
-struct inst_asign_var* inst_new_asign_var(struct ir_context *ctx, size_t i, struct value *value); 
+struct inst_assign_var* inst_new_assign_var(struct ir_context *ctx, size_t i, struct value *value); 
 struct inst_binary* inst_new_binary(struct ir_context *ctx, enum binary_ops type, struct value *a, struct value *b); 
 struct inst_jump* inst_new_jump(struct ir_context *ctx, struct basic_block *block); 
 struct inst_jump_cond* inst_new_jump_cond(struct ir_context *ctx, struct basic_block *a, struct basic_block *b, struct value *cond);
 struct inst_return* inst_new_return(struct ir_context *ctx);
-struct function* ir_new_function(struct ir_context *context, range_t name, struct basic_block *entry);
+
+struct function* ir_new_function(struct ir_context *context, range_t name);
 
 void inst_setUse(struct ir_context *ctx, struct instruction *inst, size_t useOffset, struct value *value);
 void inst_replaceUse(struct use **use, struct value *value);
 
 void inst_insertAfter(struct instruction *inst, struct instruction *add);
 
-struct basic_block* block_new(struct ir_context *ctx);
+struct basic_block* block_new(struct ir_context *ctx, struct function *fn);
 void block_insert(struct basic_block *block, struct instruction *inst);
 
 struct use** inst_getUses(struct instruction *inst, size_t *count);

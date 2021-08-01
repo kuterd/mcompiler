@@ -181,7 +181,7 @@ void dbuffer_pushRange(dbuffer_t *dbuffer, range_t *range) {
     dbuffer_pushData(dbuffer, range->ptr, range->size);
 }
 
-void dbuffer_pushPointer(dbuffer_t *dbuffer, void *pointer) {
+void dbuffer_pushPtr(dbuffer_t *dbuffer, void *pointer) {
     dbuffer_ensureCap(dbuffer, sizeof(void*));
     dbuffer_pushData(dbuffer, &pointer, sizeof(void*));
 }

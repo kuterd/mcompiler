@@ -69,8 +69,9 @@ void inst_insertAfter(struct instruction *inst, struct instruction *add) {
     list_addAfter(&inst->inst_list, &add->inst_list); 
 }
 
-struct basic_block* block_new(struct ir_context *ctx) {
+struct basic_block* block_new(struct ir_context *ctx, struct function *fn) {
     struct basic_block* block = znnew(&ctx->alloc, struct basic_block);
+    block->parent = fn;
     _value_init(&block->value, V_BLOCK, DT_BLOCK);
     LIST_INIT(&block->instructions);
 }
@@ -85,25 +86,34 @@ struct element_name {
     struct hm_bucket_entry entry;
 };
 
-struct ir_print_context {
-    struct ir_context *irContext;
-    size_t valueNameCounter;
-};
-
-void block_dump(struct ir_print_context *context, struct basic_block *block, dbuffer_t *dbuffer,
+void block_dump(struct ir_context *ctx, struct basic_block *block, dbuffer_t *dbuffer,
                 int dot, struct ir_print_annotations *annotations);
 
 
-//TODO: Use the value.name
-range_t _get_valueName(struct ir_print_context *context, struct value *value) {
+struct function* value_getFunction(struct value *value) {
+    if (value->type == V_BLOCK) {
+        struct basic_block *block = containerof(value, struct basic_block, value);
+        return block->parent;
+    } else if (value->type == INST) {
+        struct instruction *inst = containerof(value, struct instruction, value);
+        return inst->parent->parent;
+    }
+    //FIXME: Support arguments.
+    return NULL;
+}  
+
+range_t value_getName(struct ir_context *ctx, struct value *value) {
     if (value->name.size != 0)
         return value->name;
-
-    size_t num = ++context->valueNameCounter;
+    // Generate a name for this value.
+    struct function *func = value_getFunction(value);
+    
+    size_t num = func->valueNameCounter++; 
     range_t name = format_range("{int}", num);
-    value_setName(context->irContext, value, name);
+    value_setName(ctx, value, name);
     free(name.ptr);
     return value->name;
+
 }
 
 void value_setName(struct ir_context *ctx, struct value *value, range_t name) {
@@ -114,10 +124,6 @@ void value_setName(struct ir_context *ctx, struct value *value, range_t name) {
 }
 
 void function_dump(struct ir_context *ctx, struct function *fun, struct ir_print_annotations *annotations) {
-    // Init the print context 
-    struct ir_print_context context;
-    context.irContext = ctx;
-    context.valueNameCounter = 0;
 
     printf("%s function %.*s\n", kDataTypeNames[fun->returnType],
             fun->value.name.size, fun->value.name.ptr);
@@ -127,7 +133,7 @@ void function_dump(struct ir_context *ctx, struct function *fun, struct ir_print
     dbuffer_t toVisit, newVisit;
     dbuffer_init(&toVisit);
     dbuffer_init(&newVisit);
-    dbuffer_pushPointer(&toVisit, fun->entry); 
+    dbuffer_pushPtr(&toVisit, fun->entry); 
     dbuffer_t content;
     dbuffer_init(&content);
             
@@ -140,17 +146,18 @@ void function_dump(struct ir_context *ctx, struct function *fun, struct ir_print
             hashset_insertPtr(&visited, block);        
             
             dbuffer_clear(&content);
-            block_dump(&context, block, &content, 0, annotations);
+            block_dump(ctx, block, &content, 0, annotations);
             printf("%.*s\n", content.usage, content.buffer);
 
             struct block_successor_it it = block_successor_begin(block); 
             for (; !block_successor_end(it); it = block_successor_next(it)) {
                 struct basic_block *succ = block_successor_get(it);
-                dbuffer_pushPointer(&newVisit, succ); 
+                dbuffer_pushPtr(&newVisit, succ); 
             }
 
 
         }
+
         dbuffer_clear(&toVisit);
         dbuffer_swap(&toVisit, &newVisit);
     }
@@ -163,17 +170,13 @@ void function_dump(struct ir_context *ctx, struct function *fun, struct ir_print
 }
 
 void function_dumpDot(struct ir_context *ctx, struct function *fun, struct ir_print_annotations *annotations) {
-    struct ir_print_context context;
-    context.irContext = ctx;
-    context.valueNameCounter = 0;
-
     hashset_t visited;
     hashset_init(&visited, ptrKeyType); 
 
     dbuffer_t toVisit, newVisit;
     dbuffer_init(&toVisit);
     dbuffer_init(&newVisit);
-    dbuffer_pushPointer(&toVisit, fun->entry); 
+    dbuffer_pushPtr(&toVisit, fun->entry); 
     dbuffer_t content;
     dbuffer_init(&content);
 
@@ -193,7 +196,7 @@ void function_dumpDot(struct ir_context *ctx, struct function *fun, struct ir_pr
             dbuffer_clear(&content);
             dbuffer_pushStr(&content, "label=\"");
             //TODO: Proper escape sequance. 
-            block_dump(&context, block, &content, 1, annotations);
+            block_dump(ctx, block, &content, 1, annotations);
             getNodeId(block, nodeId);
             dbuffer_pushChar(&content, '\"'); 
             dbuffer_pushChar(&content, 0);
@@ -206,7 +209,7 @@ void function_dumpDot(struct ir_context *ctx, struct function *fun, struct ir_pr
                 char childId[MAX_NODE_ID];
                 getNodeId(succ, childId);
                 graph_addEdge(&graph, nodeId, childId); 
-                dbuffer_pushPointer(&newVisit, succ); 
+                dbuffer_pushPtr(&newVisit, succ); 
             }
         }
         dbuffer_clear(&toVisit);
@@ -227,9 +230,9 @@ void function_dumpDot(struct ir_context *ctx, struct function *fun, struct ir_pr
 // We need to have a hack for proper dot formatting.
 #define _B_NEW_LINE dbuffer_pushStr(dbuffer, dot ? "\\l" : "\n") 
 
-void block_dump(struct ir_print_context *context, struct basic_block *block, dbuffer_t *dbuffer,
+void block_dump(struct ir_context *ctx, struct basic_block *block, dbuffer_t *dbuffer,
                 int dot, struct ir_print_annotations *annotations) {
-    range_t bName = _get_valueName(context, &block->value); 
+    range_t bName = value_getName(ctx, &block->value); 
     
     format_dbuffer("!{range}:", dbuffer, bName);
     _B_NEW_LINE; 
@@ -237,7 +240,7 @@ void block_dump(struct ir_print_context *context, struct basic_block *block, dbu
     // Print the dominator information, if we have it. 
     if (annotations && annotations->doms) {
         struct basic_block *dominator = dominators_getIDom(annotations->doms, block);
-        range_t dominatorName = _get_valueName(context, &dominator->value); 
+        range_t dominatorName = value_getName(ctx, &dominator->value); 
  
         format_dbuffer("// idom[{range}] = {range}", dbuffer, bName, dominatorName);
         _B_NEW_LINE; 
@@ -250,7 +253,7 @@ void block_dump(struct ir_print_context *context, struct basic_block *block, dbu
         format_dbuffer("// df[{range}] = [", dbuffer, bName);
         for (size_t i = 0; i < size; i++) {
             struct basic_block *df = dfList[i];
-            range_t dfName = _get_valueName(context, &df->value); 
+            range_t dfName = value_getName(ctx , &df->value); 
             format_dbuffer("{range}", dbuffer, dfName);
             if (i != size - 1)
                 dbuffer_pushStr(dbuffer, " ,");
@@ -263,7 +266,7 @@ void block_dump(struct ir_print_context *context, struct basic_block *block, dbu
         struct instruction *inst = containerof(c, struct instruction, inst_list);
         
         if (inst->value.dataType != VOID) {
-            range_t vName = _get_valueName(context, &inst->value);
+            range_t vName = value_getName(ctx, &inst->value);
             format_dbuffer("%{range} = ", dbuffer, vName);
         }
         format_dbuffer("{str} ", dbuffer, kInstNames[inst->type]);
@@ -273,8 +276,8 @@ void block_dump(struct ir_print_context *context, struct basic_block *block, dbu
             case INST_LOAD_VAR:
                 format_dbuffer("{int}", dbuffer, IR_INST_AS_TYPE(inst, struct inst_load_var)->rId);
                 break;
-            case INST_ASIGN_VAR:
-                format_dbuffer("{int}, ", dbuffer, IR_INST_AS_TYPE(inst, struct inst_asign_var)->rId);
+            case INST_ASSIGN_VAR:
+                format_dbuffer("{int}, ", dbuffer, IR_INST_AS_TYPE(inst, struct inst_assign_var)->rId);
                 break;
             case INST_BINARY:
                 format_dbuffer("{str} ", dbuffer,
@@ -291,7 +294,7 @@ void block_dump(struct ir_print_context *context, struct basic_block *block, dbu
             switch(value->type) {
                 case V_BLOCK: 
                 case INST: {
-                    range_t vName = _get_valueName(context, value);
+                    range_t vName = value_getName(ctx, value);
                     format_dbuffer("%{range}", dbuffer, vName); 
                     break;
                 }
@@ -337,9 +340,9 @@ INSTRUCTIONS(GEN_NEW_INST)
 
 // TODO: Consider allowing the creation of functions without a entry block.
 // this would be very usefull for ir creation.
-struct function* ir_new_function(struct ir_context *ctx, range_t name, struct basic_block *entry) {
+struct function* ir_new_function(struct ir_context *ctx, range_t name) {
     struct function *fun = znnew(&ctx->alloc, struct function);
-    fun->entry = entry;
+    fun->valueNameCounter = 0; 
 
     list_add(&ctx->functions, &fun->functions);
     return fun;
@@ -351,8 +354,8 @@ struct inst_load_var* inst_new_load_var(struct ir_context *ctx, size_t i, enum d
     return var; 
 }
 
-struct inst_asign_var* inst_new_asign_var(struct ir_context *ctx, size_t i, struct value *value) {
-    struct inst_asign_var *var = _inst_new_asign_var(ctx, VOID);
+struct inst_assign_var* inst_new_assign_var(struct ir_context *ctx, size_t i, struct value *value) {
+    struct inst_assign_var *var = _inst_new_assign_var(ctx, VOID);
     var->rId = i;
     
     inst_setUse(ctx, &var->inst, 0, value);
@@ -393,7 +396,7 @@ struct inst_return* inst_new_return(struct ir_context *ctx) {
 // Instruction that use a constant number of values.
 #define INST_CONSTANT_USE(o)               \
     o(INST_LOAD_VAR, load_var, 0)          \
-    o(INST_ASIGN_VAR, asign_var, 1)        \
+    o(INST_ASSIGN_VAR, assign_var, 1)        \
     o(INST_BINARY, binary, 2)              \
     o(INST_JUMP, jump, 1)                  \
     o(INST_JUMP_COND, jump_cond, 3)

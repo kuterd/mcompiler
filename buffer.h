@@ -83,7 +83,7 @@ void dbuffer_pushChars(dbuffer_t *dbuffer, char c, size_t size);
 
 void dbuffer_pushRange(dbuffer_t *dbuffer, range_t *range);
 
-void dbuffer_pushPointer(dbuffer_t *dbuffer, void *pointer);
+void dbuffer_pushPtr(dbuffer_t *dbuffer, void *pointer);
 
 void dbuffer_popPointer(dbuffer_t *dbuffer);
 

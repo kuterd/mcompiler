@@ -1,4 +1,5 @@
 #include "ir.h"
+#include <assert.h>
 
 struct basic_block* generate_testBlock(struct ir_context *ctx, struct function *fn, int i) {
     struct basic_block *bb = block_new(ctx, fn);
@@ -10,7 +11,7 @@ struct basic_block* generate_testBlock(struct ir_context *ctx, struct function *
     return bb;
 }
 
-int main(int argc, char *args[]) {
+void test_dumpDot() {
     struct ir_context ctx;    
     ir_context_init(&ctx); 
 
@@ -43,5 +44,32 @@ int main(int argc, char *args[]) {
 
     function_dumpDot(&ctx, fun, NULL);
     ir_context_free(&ctx);
+}
+
+void test_replace() {
+    struct ir_context ctx;
+    ir_context_init(&ctx);
+    
+    struct function *fun = ir_new_function(&ctx, RANGE_STRING("test"));
+    struct basic_block *block = block_new(&ctx, fun);  
+    fun->entry = block;
+   
+    struct value *v1 = &ir_constant_value(&ctx, 123)->value;
+    struct value *v2 = &ir_constant_value(&ctx, 321)->value; 
+
+    struct inst_assign_var *assign = inst_new_assign_var(&ctx, 1, v1);
+    assert(assign->uses[0]->value == v1); 
+ 
+    block_insert(block, &assign->inst); 
+    value_replaceAllUses(v1, v2);
+    
+    assert(assign->uses[0]->value == v2 && "v2 must have a use"); 
+    assert(list_empty(&v1->uses) && "v1 must not have any uses");
+    assert(!list_empty(&v2->uses) && "v2 must have uses");
+}
+
+int main(int argc, char *args[]) {
+    test_dumpDot();
+    test_replace();
     return 0;
 }

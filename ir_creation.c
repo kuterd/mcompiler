@@ -2,104 +2,243 @@
 #include "parser.h"
 #include "utils.h"
 #include "hashmap.h"
+#include "ir_creation.h"
 
-// This creates non ssa ir, ssa conversion happens later.
+//TODO: Handle errors gracefully.
+// This creates non SSA IR, SSA conversion happens later.
 
 struct variable {
-    range_t variableName;
     size_t rId;
+    enum token_type dataType;
     struct hm_bucket_entry entry; 
 };
 
-struct ir_creator {
-    // Variable to virtual register mapping.
-    hashmap_t variableMap;
-    size_t regCount;
-    
-    // Current Function.
-    struct function *function;
+// information about variables/declarations inside this block.
+// we need might need to look at parents.
+struct block_info {
+    hashmap_t variableMap;     
 
-    // Current Block.
-    struct basic_block *block;
+    zone_allocator zone;
+    struct block_info *parent;
 };
+
+enum data_type convertDataType(enum token_type type) {
+    switch(type) {
+        case TK_KW_INT64:
+            return INT64;
+        case TK_KW_VOID:
+            return VOID;
+    }
+}
+
+// NOTE: A parser block can be one or more IR "basic_block".
 
 #define _ creator->
 
-void ir_creator_init(struct ir_creator *creator) {
-    hashmap_init(& _ variableMap,  rangeKeyType);
-    dbuffer_init(& _ ranges)Map;
+void ir_creator_init(struct ir_creator *creator, struct ir_context *ctx) {
     _ regCount = 0;
-    _ block = NULL; 
+    _ block = NULL;
+    _ blockInfo = NULL;
+    _ ctx = ctx;
 }
 
-size_t _getReg(struct ir_creator *creator, range_t range) {
-    struct hm_bucket_entry *entry = hashmap_getRange(_ variableMap, range); 
-    if (entry)
-        return containerof(entry, struct register_entry, entry)->rId; 
-    // error out
-    return 0; 
+struct basic_block* create_block(struct ir_creator *creator, struct ast_block *block, struct basic_block **last);
+
+struct function* ir_creator_createFunction(struct ir_creator *creator, struct ast_function *func) {
+    assert(func->childCount == func->argumentCount + 1 && "Incorrect child count for function");
+    
+    struct function *result = ir_new_function(_ ctx, func->name);
+    _ function = result;
+
+    //FIXME: When we add arguments.
+    result->entry = create_block(creator, AST_AS_TYPE(func->childs[0], block), NULL);
+    return result;
 }
 
-//Get or create range, for the current variable.
-size_t _getOrCreateReg(struct ir_creator *creator, range_t range) {
-    struct hm_bucket_entry *entry = hashmap_getRange(_ variableMap, range); 
+struct variable* bInfo_getReg(struct block_info *bInfo, range_t range) {
+    struct hm_bucket_entry *entry = hashmap_getRange(&bInfo->variableMap, range); 
     if (entry)
-        return containerof(entry, struct register_entry, entry)->rId; 
-    dbuffer_pushData(_ ranges, &range, sizeof(range_t));
+        return containerof(entry, struct variable, entry); 
+    return NULL;
+}
+
+// Traverse blocks upwards, find the reg
+struct variable* _findReg(struct ir_creator *creator, range_t range) {
+    struct block_info *current = creator->blockInfo;
     
-    struct register_entry reg = nnew(struct register_entry); 
-    reg->rId = _ regCount++;
-    hashmap_setRange(range, &reg->entry); 
-    
-    return reg->rId;    
+    while (current) {
+        struct variable *var = bInfo_getReg(current, range);
+        if (var)
+            return var;
+        current = current->parent; 
+    }
+    assert(0 && "Couldn't find reg");
+    return NULL;
+}
+
+void _createReg(struct ir_creator *creator, range_t range, enum token_type dataType) {
+    struct block_info *bInfo = _ blockInfo;
+    struct hm_bucket_entry *entry = hashmap_getRange(&bInfo->variableMap, range); 
+    assert(!entry && "Was expecting the entry to be empty");
+    struct variable *vInfo = znnew(&bInfo->zone, struct variable); 
+    hashmap_setRange(&bInfo->variableMap, range, &vInfo->entry);
+    vInfo->rId = creator->regCount++;
+    vInfo->dataType = dataType;
 }
 
 struct value* create_value(struct ir_creator *creator, struct ast_node *node);
 
 struct value* create_number(struct ir_creator *creator, struct ast_number *number) { 
-    return &ir_constant_value(creator->function, number->num)->value;
+    return &ir_constant_value(_ ctx, number->num)->value;
 }
 
-struct instruction* create_binary(struct ir_creator *creator, struct ast_binary_exp *binary) {
-    struct value *left = create_value(binary->left); 
-    struct value *right = create_value(binary->right);
-    
-    struct inst_binary *result = inst_new_binary(INT64);  
-    ir_setUse(result, &result->left, left); 
-    ir_setUse(result, &result->right, right); 
+struct value* create_value(struct ir_creator *creator, struct ast_node *node);
 
+struct instruction* create_assignment(struct ir_creator *creator, struct ast_binary_exp *exp) {
+    struct ast_variable *variable = AST_AS_TYPE(exp->left, variable);
+    struct variable *var = _findReg(creator, variable->varName); 
+
+    struct value *val = create_value(creator, exp->right); 
+    struct inst_assign_var *assign = inst_new_assign_var(creator->ctx, var->rId, val);
+
+    block_insert(_ block, &assign->inst);
+}
+
+struct value* create_binary(struct ir_creator *creator, struct ast_binary_exp *binary) {
+   enum binary_ops op; 
     switch(binary->op) {
         case TK_PLUS:
-            result->op = BO_ADD;
+            op = BO_ADD;
             break;
         case TK_MINUS:
-            result->op = BO_SUB;
+            op = BO_SUB;
             break;
         case TK_MUL:
-            result->op = BO_MUL;
+            op = BO_MUL;
             break;
         case TK_DIV:
-             result->op = BO_DIV;
+            op = BO_DIV;
             break;
+        case TK_GREATER:
+            op = BO_GREATER;
+            break;
+        case TK_LESS_THAN:
+            op = BO_LESS;
+            break;
+        case TK_GREATER_EQ:
+            op = BO_GREATER_EQ;
+            break;
+        case TK_LESS_EQ:
+            op = BO_LESS_EQ;
+            break;
+        case TK_EQUALS:
+            op = BO_EQUALS;
+            break;
+       default:
+            assert(0 && "Unchandled binary operator");
+       //Add all.
     }
+    struct value *left = create_value(creator, binary->left); 
+    struct value *right = create_value(creator, binary->right);
+ 
+    struct inst_binary *result = inst_new_binary(_ ctx, op, left, right);
 
-    return &result->inst;
+    block_insert(_ block, &result->inst);
+    return &result->inst.value;
 }
 
-struct intruction* create_variable(struct ir_creator *creator, struct ast_variable *var) {
-    struct inst_load_var *var = inst_new_load_var(INT64): 
-    var->rId = _getReg(var->varName); 
-    
-    return &var->inst;
+struct instruction* create_variable(struct ir_creator *creator, struct ast_variable *var) {
+    struct variable *varInfo = _findReg(creator, var->varName);
+    struct inst_load_var *loadVar = inst_new_load_var(_ ctx, varInfo->rId, convertDataType(varInfo->dataType)); 
+    block_insert(_ block, &loadVar->inst);
+    return &loadVar->inst;
 }
 
 struct value* create_value(struct ir_creator *creator, struct ast_node *node) {
+    //TODO: Handle calls.
     switch(node->type) {
         case BINARY_EXP:
-            return &create_binary(creator, AST_AS_TYPE(node, struct ast_binary_exp))->value;
+            return create_binary(creator, AST_AS_TYPE(node, binary_exp));
         case VARIABLE:
-            return &create_variable(creator, AST_AS_TYPE(node, struct ast_variable))->value;
+            return &create_variable(creator, AST_AS_TYPE(node, variable))->value;
         case NUMBER:
-            return create_number(creator, AST_AS_TYPE(node, struct ast_number));
-    }        
+            return create_number(creator, AST_AS_TYPE(node, number));
+        defualt:
+            assert(0 && "Unknown node type for value creation");
+    }
+    return NULL;
 }
+
+void create_statement(struct ir_creator *creator, struct ast_node *node) {
+    if (node->type == BINARY_EXP) {
+        struct ast_binary_exp *exp = AST_AS_TYPE(node, binary_exp);
+        assert(exp->op == TK_ASSIGN && "statement must be a assignment"); 
+    
+        create_assignment(creator, exp); 
+    } else if (node->type == IF) {
+        struct ast_if *if_node = AST_AS_TYPE(node, if);
+        struct value *cond = create_value(creator, if_node->condition);
+        
+        struct basic_block *last; 
+        struct basic_block *bblock = create_block(creator, AST_AS_TYPE(if_node->ifBlock, block), &last);
+
+        // basic_block can only have a jump at the end, so we need to create a new
+        // block for the rest of this function.
+        // we do not need to create a new block info since the variable scope is the same.
+
+        struct basic_block *rest = block_new(_ ctx, _ function);
+        struct inst_jump_cond *cjump = inst_new_jump_cond(_ ctx, bblock, rest, cond);
+        
+        block_insert(_ block, &cjump->inst); 
+
+        // When the block associated with the if is complete, we want to jump to the rest 
+        // block to continue execution. 
+        struct inst_jump *jump = inst_new_jump(_ ctx, rest);
+        block_insert(last, &jump->inst); 
+
+        _ block = rest;
+    } else if (node->type == DECLARATION) {
+        struct ast_declaration *decl = AST_AS_TYPE(node, declaration);
+        struct ast_binary_exp *exp = AST_AS_TYPE(decl->assignment, binary_exp);
+        struct ast_variable *var = AST_AS_TYPE(exp->left, variable);
+        _createReg(creator, var->varName, decl->dataType); 
+
+        create_assignment(creator, exp);
+    } 
+}
+
+struct basic_block* create_block(struct ir_creator *creator, struct ast_block *block, struct basic_block **last) {
+    struct block_info *blockInfo = malloc(sizeof(struct block_info)); 
+    hashmap_init(&blockInfo->variableMap,  rangeKeyType);
+    blockInfo->parent = _ blockInfo;
+    creator->blockInfo = blockInfo;
+    zone_init(&blockInfo->zone);
+
+    struct basic_block *bblock = block_new(_ ctx, _ function); 
+    struct basic_block *oldBlock = _ block;
+    _ block = bblock;
+
+    // Create statements.
+    for (size_t i = 0; i < block->childCount; i++) {
+        struct ast_node *child = block->childs[i];
+        create_statement(creator, child); 
+    }
+    
+    zone_free(&blockInfo->zone);
+    hashmap_free(&blockInfo->variableMap);
+    
+    // Processing the statements can change the value of creator->block, for example
+    // when processing a if block. Sometimes we need the last block.
+    if (last != NULL) 
+        *last = _ block;
+ 
+    // Return to the old block context.
+    _ blockInfo = _ blockInfo->parent;
+    _ block = oldBlock;
+
+    free(blockInfo);
+
+    return bblock;
+}
+
+

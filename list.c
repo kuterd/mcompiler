@@ -16,7 +16,7 @@ void list_add(struct list_head *lst, struct list_head *e) {
 void list_addAfter(struct list_head *b, struct list_head *e) {
     e->next = b->next;
     e->prev = b;
-    b->next->prev = b;
+    b->next->prev = e;
     b->next = e;
 }
 

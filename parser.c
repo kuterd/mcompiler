@@ -1,6 +1,7 @@
 #include "parser.h"
 #include "format.h"
 #include "dot_builder.h"
+#include <string.h>
 
 // ---- Tokenizer ----
 char *token_type_names[] = {
@@ -27,7 +28,7 @@ void read_id(struct reader *reader, struct token *token) {
 
     while (_ range.size > 0) {
         char c = * _ range.ptr;
-        if (!(c >= 'a' && c <= 'z') && !(c >= 'A' && c <= 'Z'))
+        if (!(c >= 'a' && c <= 'z') && !(c >= 'A' && c <= 'Z') && !(c >= '0' && c <= '9'))
             break;
         reader_advance(reader, 1);
         token->range.size++;
@@ -42,7 +43,17 @@ void read_id(struct reader *reader, struct token *token) {
     } else if (range_cmp(token->range, RANGE_STRING("else"))) {
         token->type = TK_KW_ELSE;
         return; 
+    } else if(range_cmp(token->range, RANGE_STRING("void"))) {
+        token->type = TK_KW_VOID; 
+        return; 
+    } else if(range_cmp(token->range, RANGE_STRING("int64"))) {
+        token->type = TK_KW_INT64; 
+        return; 
+    } else if(range_cmp(token->range, RANGE_STRING("return"))) {
+        token->type = TK_KW_RETURN; 
+        return; 
     }
+
     token->type = TK_ID;
 }
 
@@ -65,6 +76,17 @@ void reader_skipWhite(struct reader *reader) {
             break;
         reader_advance(reader, 1);
    }
+}
+
+int _reader_isEq(struct reader *reader, struct token *token) {
+    if ( _ range.size == 0)
+        return 0; 
+    if (* _ range.ptr == '=') {
+        reader_advance(reader, 1);
+        token->range.size = 2;
+        return 1;
+    }
+    return 0;
 }
 
 void token_next(struct reader *reader, struct token *token) {
@@ -103,13 +125,34 @@ void token_next(struct reader *reader, struct token *token) {
             token->type = TK_MINUS;
             reader_advance(reader, 1);
             return;
-         case '*':
+        case '*':
             token->type = TK_MUL;
             reader_advance(reader, 1);
             return;
-         case '/':
+        case '/':
             token->type = TK_DIV;
             reader_advance(reader, 1);
+            return;
+        case '=':
+            token->type = TK_ASSIGN;
+            reader_advance(reader, 1);
+            if (_reader_isEq(reader, token))
+                token->type = TK_EQUALS;
+           return;
+        case '>':
+            token->type = TK_GREATER;
+            if (_reader_isEq(reader, token))
+                token->type = TK_GREATER_EQ;
+ 
+            reader_advance(reader, 1);
+        case '<':
+            token->type = TK_LESS_THAN;
+            if (_reader_isEq(reader, token))
+                token->type = TK_LESS_EQ;
+            return;
+        case ';':
+            reader_advance(reader, 1);
+            token->type = TK_SEMI_COLON;
             return;
         case 'a' ... 'z':
             // flow through.
@@ -148,8 +191,8 @@ void token_dumpAll(char *string) {
 
 // used for things like ast_module_new 
 #define GEN_NEW_DEFINITION(enu, prefix)                                       \
-    AST_TYPE(prefix)* ast_##prefix##_new() {                                  \
-        AST_TYPE(prefix) *result = nnew(AST_TYPE(prefix));                    \
+    AST_TYPE(prefix)* ast_##prefix##_new(parser_t *parser) {                  \
+        AST_TYPE(prefix) *result = znnew(&parser->zone, AST_TYPE(prefix));    \
         *result = (AST_TYPE(prefix)){.node = (struct ast_node) {.type = enu}};\
         return result;                                                        \
     }
@@ -178,7 +221,8 @@ char *kASTNodeName[] = {
 #define VISIT_VARIABLE_CHILD(enu, prefix)                    \
     case enu:                                                \
         *childs = AST_AS_TYPE(node, prefix)->childs;         \
-        *childCount = AST_AS_TYPE(node, prefix)->childCount; 
+        *childCount = AST_AS_TYPE(node, prefix)->childCount; \
+        break; 
 
 void ast_getChilds(struct ast_node *node, size_t *childCount, struct ast_node ***childs) {
      switch(node->type) {
@@ -187,8 +231,14 @@ void ast_getChilds(struct ast_node *node, size_t *childCount, struct ast_node **
         VISIT_NO_CHILD(VARIABLE)
         VISIT_CONST_CHILD(WHILE, while, 2)
         VISIT_CONST_CHILD(PREFIX, prefix, 1)
+        VISIT_CONST_CHILD(DECLARATION, declaration, 1)
         VISIT_CONST_CHILD(BINARY_EXP, binary_exp, 2)
         VISIT_VARIABLE_CHILD(MODULE, module)
+        VISIT_VARIABLE_CHILD(FUNCTION, function)
+        VISIT_VARIABLE_CHILD(BLOCK, block)
+        VISIT_VARIABLE_CHILD(IF, if)
+        default:
+            assert(0 && "UNKNOWN node");
      }
 }
 
@@ -198,21 +248,28 @@ void ident_dbuffer(dbuffer_t *buffer, size_t i) {
 
 void ast_nodeInfoBuffer(struct ast_node *node, dbuffer_t *buffer, size_t i) {
     ident_dbuffer(buffer, i);
-    format_dbuffer("Node Type: {str}", buffer, kASTNodeName[node->type]);
+    format_dbuffer("Node Type: {str}\n", buffer, kASTNodeName[node->type]);
     
     switch(node->type) {
         case NUMBER:
             ident_dbuffer(buffer, i);
-            format_dbuffer("({int})", buffer, AST_AS_TYPE(node, number)->num);
+            format_dbuffer("'{int}'", buffer, AST_AS_TYPE(node, number)->num);
             break;
         case BINARY_EXP:
             ident_dbuffer(buffer, i);
-            format_dbuffer("({str})", buffer, token_type_names[AST_AS_TYPE(node, binary_exp)->op]);
+            format_dbuffer("'{str}'", buffer, token_type_names[AST_AS_TYPE(node, binary_exp)->op]);
             break;
         case VARIABLE:
             ident_dbuffer(buffer, i);
-            format_dbuffer("({range})", buffer, AST_AS_TYPE(node, variable)->varName); 
+            format_dbuffer("'{range}'", buffer, AST_AS_TYPE(node, variable)->varName); 
             break;
+        case FUNCTION:
+            ident_dbuffer(buffer, i);
+            format_dbuffer("returnType: ({str})", buffer, token_type_names[AST_AS_TYPE(node, function)->returnType]);
+            break;
+        case DECLARATION:
+            ident_dbuffer(buffer, i);
+            format_dbuffer("dataType: ({str})", buffer, token_type_names[AST_AS_TYPE(node, declaration)->dataType]);
     } 
 }
 
@@ -222,6 +279,7 @@ void ast_nodeInfo(struct ast_node *node, size_t i) {
     ast_nodeInfoBuffer(node, &dbuffer, i);
     dbuffer_pushChar(&dbuffer, 0);
     puts(dbuffer.buffer);
+    dbuffer_free(&dbuffer);
 }
 
 void ast_dump(struct ast_node *node, size_t i) {
@@ -273,8 +331,14 @@ char* ast_dumpDot(struct ast_node *node) {
 /// ---- Parser ----
 
 // TODO: error formating.
-#define parser_check(check, error_print) if (!(check)) { parser->error = format error ; return NULL; }
+#define parser_check(check, error_print) if (!(check)) { parser->error = error_print; return NULL; }
 #define parser_check_silent(check) if(!(check)) return NULL;
+#define parser_expect(ttype, error)             \
+do {                                            \
+   struct token tok = parser_next(parser);      \
+   parser_check(tok.type == (ttype), (error));  \
+} while(0);
+
 
 struct token parser_peekToken(parser_t *parser) {
     if (!parser->hasPeek)
@@ -307,26 +371,32 @@ struct token parser_fresh(parser_t *parser) {
 
 void parser_init(parser_t *parser, range_t range) {
     // initialize the reader.
+    zone_init(&parser->zone);
     *parser = (parser_t){.reader = (struct reader) { .range = range }};
 }
 
 struct ast_module* parser_parseModule(parser_t *parser) {
-    struct ast_module *module = ast_module_new(); 
+    struct ast_module *module = ast_module_new(parser); 
 }
 
 // Operator presedence.
 // *, /
 // +, -
-// =
 int getPresedence(enum token_type type) {
     switch(type) {
+        case TK_GREATER:
+        case TK_GREATER_EQ:
+        case TK_LESS_THAN:
+        case TK_LESS_EQ:
+        case TK_EQUALS:
+            return 3;
         case TK_PLUS:
         case TK_MINUS:
             return 4;
         case TK_MUL:
         case TK_DIV:
             return 5;
-        default:
+       default:
             return -1;
     }
 }
@@ -338,19 +408,19 @@ struct ast_node* parser_readAtomInternal(parser_t *parser, int hasPrefix) {
     // Have we already parsed a prefix ?
     if (!hasPrefix && (tok.type == TK_MINUS || tok.type == TK_PLUS)) {
         struct ast_node *node = parser_readAtomInternal(parser, 1);
-        if (tok.type == TK_PLUS)
+        if (tok.type != TK_PLUS)
             AST_AS_TYPE(node, number)->num *= -1; 
         return node;
     } else if (tok.type == TK_PARAN_OPEN) { 
         struct ast_node *node = parser_parseExpression(parser);
-        parser_next(parser); // TODO: error handling.
+        parser_expect(TK_PARAN_CLOSE, "expected ')' a the end of paran expression");
         return node;
     } else if (tok.type == TK_NUMBER) {
-        struct ast_number *number = ast_number_new(); 
+        struct ast_number *number = ast_number_new(parser); 
         number->num = range_parseInt(tok.range);
         return &number->node;
     } else if (tok.type == TK_ID) {
-        struct ast_variable *variable = ast_variable_new();
+        struct ast_variable *variable = ast_variable_new(parser);
         variable->varName = tok.range;
         return &variable->node;
     }
@@ -365,7 +435,6 @@ struct ast_node* parser_readAtom(parser_t *parser) {
 struct ast_node* parser_parseExpression(parser_t *parser) {
     struct ast_node *node = parser_readAtom(parser); 
     return parser_parseBinary(parser, node);    
-
 }
 
 struct ast_node* parser_parseBinary(parser_t *parser, struct ast_node *left) {
@@ -378,11 +447,13 @@ struct ast_node* parser_parseBinary(parser_t *parser, struct ast_node *left) {
     parser_next(parser); // skip the operator. 
 
     struct ast_node *node = parser_readAtom(parser); 
-    struct ast_binary_exp *exp = ast_binary_exp_new();
+    parser_check_silent(node);
+    struct ast_binary_exp *exp = ast_binary_exp_new(parser);
     exp->op = op.type;
     exp->left = left;
     exp->right = node;
     struct ast_node *result = parser_parseBinary(parser, &exp->node);
+    parser_check_silent(result);
 
     // since left is a binary expression, the result must also be a binary expression.
     struct ast_binary_exp *result_exp = AST_AS_TYPE(result, binary_exp);
@@ -425,3 +496,199 @@ struct ast_node* parser_parseBinary(parser_t *parser, struct ast_node *left) {
 
     return result;
 }
+
+int _isDataType(enum token_type type) {
+    return type == TK_KW_VOID || type == TK_KW_INT64;
+}
+
+struct ast_node* parser_parseAssignment(parser_t *parser, struct ast_variable *variable) {
+    parser_next(parser);
+    struct ast_node *assigned = parser_parseExpression(parser);
+    parser_check_silent(assigned);
+    struct ast_binary_exp *result = ast_binary_exp_new(parser);
+    result->op = TK_ASSIGN;
+    result->left = &variable->node;
+    result->right= assigned;
+
+    return &result->node;
+}
+
+struct ast_node* parser_parseDeclaration(parser_t *parser) {
+    struct token dataType = parser_next(parser);
+    assert(_isDataType(dataType.type) && "expected data type");
+
+    struct token id = parser_next(parser);
+    parser_check(id.type = TK_ID, "expected identifier while parsing declaration");
+
+    struct ast_variable *variable = ast_variable_new(parser);
+    variable->varName = id.range;
+
+    struct ast_node *assignment = parser_parseAssignment(parser, variable);
+    parser_check_silent(assignment);
+    parser_expect(TK_SEMI_COLON, "expected semicolon after statement");
+    
+    struct ast_declaration *result = ast_declaration_new(parser);
+    result->dataType = dataType.type;
+    result->assignment = assignment;
+
+    return &result->node;
+}
+
+struct ast_node* parser_parseAssignmentOrCall(parser_t *parser) {
+    struct token tok = parser_next(parser);
+    parser_check(tok.type == TK_ID, "Expected identifier"); 
+    struct ast_variable *variable = ast_variable_new(parser);
+    variable->varName = tok.range;
+
+    struct token op = parser_peekToken(parser);
+    
+    if (op.type == TK_ASSIGN) {
+        struct ast_node *result = parser_parseAssignment(parser, variable);
+        parser_expect(TK_SEMI_COLON, "expected semicolon after statement");
+        return result;
+    } else if (op.type == TK_PARAN_OPEN) {
+        assert("Not implemented");
+        // TODO:Parse call
+    }
+    parser->error = "unrecognized token while parsing assignment or call";
+
+    return NULL;
+}
+
+struct ast_node* parser_parseIf(parser_t *parser) {
+    parser_next(parser);
+    parser_expect(TK_PARAN_OPEN, "Expected parenthesis, while trying to parse function");
+    struct ast_node *condition = parser_parseExpression(parser);
+    parser_check_silent(condition);
+    parser_expect(TK_PARAN_CLOSE, "Expected parenthesis close, while trying to parse function");
+   
+    struct ast_if *result = ast_if_new(parser);
+    struct ast_node *block = parser_parseBlock(parser);   
+    parser_check_silent(block);
+    result->condition = condition; 
+    result->ifBlock = block;
+    result->childCount = 2; 
+    //FIXME: Parse else
+
+    return &result->node;
+}
+
+struct ast_node* parser_parseWhile(parser_t *parser) {
+    parser_next(parser);
+    parser_expect(TK_PARAN_OPEN, "Expected parenthesis, while trying to parse function");
+    struct ast_node *condition = parser_parseExpression(parser);
+    parser_check_silent(condition);
+    parser_expect(TK_PARAN_CLOSE, "Expected parenthesis close, while trying to parse function");
+ 
+    struct ast_while *result = ast_while_new(parser);
+    struct ast_node *block = parser_parseBlock(parser);
+    parser_check_silent(block);
+    
+    result->condition = condition;
+    result->block = block; 
+}
+
+struct ast_node* parser_parseStatement(parser_t *parser) {
+    struct token op = parser_peekToken(parser); 
+    if (_isDataType(op.type))
+        return parser_parseDeclaration(parser);
+
+    switch(op.type) {
+        case TK_KW_IF:
+            return parser_parseIf(parser);
+        case TK_KW_RETURN:
+            assert("Not implemented");
+            break;
+        case TK_KW_WHILE:
+            return parser_parseWhile(parser);
+        case TK_ID:
+            return parser_parseAssignmentOrCall(parser);
+
+    }
+
+    parser->error = "Unrecognized token while trying to parse statement"; 
+    return NULL;   
+}
+
+struct ast_node* parser_parseBlock(parser_t *parser) {
+    struct token op = parser_peekToken(parser); 
+    dbuffer_t statements;
+    dbuffer_initSize(&statements, 8 * sizeof(void*));
+
+    if (op.type == TK_CURLY_OPEN) {
+        parser_next(parser);
+        do {    
+            struct token tok = parser_peekToken(parser);
+            // we can't use parser_check here we did allocations.
+            if (tok.type == TK_EEOF) {
+                parser->error = "premature ending of file, was expecting '}' to terminate block";
+                dbuffer_free(&statements);
+                return NULL;
+            } 
+            if (tok.type == TK_CURLY_CLOSE)
+                break;
+
+            struct ast_node *node = parser_parseStatement(parser);
+            if (!node) { 
+                dbuffer_free(&statements);
+                return NULL;
+            } 
+            
+            dbuffer_pushPtr(&statements, node);
+        } while (1);
+        parser_next(parser);
+    } else {
+        struct ast_node *node = parser_parseStatement(parser);
+        if (!node) { 
+            dbuffer_free(&statements);
+            return NULL;
+        } 
+        dbuffer_pushPtr(&statements, node);  
+    } 
+
+    void *ptr = zone_alloc(&parser->zone, statements.usage);
+    memcpy(ptr, statements.buffer, statements.usage);
+    
+    struct ast_block *result = ast_block_new(parser);
+    result->childs = ptr;
+    result->childCount = statements.usage / sizeof(void*); 
+    
+    dbuffer_free(&statements);
+    return &result->node;
+}
+
+struct ast_node* parser_parseFunction(parser_t *parser) {
+    struct token dataType = parser_next(parser);
+
+    parser_check(_isDataType(dataType.type), "expected datatype when parsing a function");
+    struct token name = parser_next(parser);
+    parser_check(name.type == TK_ID, "exptected a function name"); 
+    parser_expect(TK_PARAN_OPEN, "expteced a '(' for function argument list"); 
+
+    // TODO: Parse function arguments.
+    parser_expect(TK_PARAN_CLOSE, "expteced ')' to terminate a function argument list."); 
+    
+    struct ast_node *block = parser_parseBlock(parser);
+ 
+    parser_check_silent(block);
+    struct ast_function *result = ast_function_new(parser);
+    result->name = name.range;
+    result->argumentCount = 0;
+    result->childCount = 1;
+    result->returnType = dataType.type;
+    
+    result->childs = (struct ast_node **)zone_alloc(&parser->zone, sizeof(void*));
+    *result->childs = block;
+    return &result->node;
+}
+
+struct ast_node* parser_module(parser_t *parser) {
+    dbuffer_t functions;
+    dbuffer_initSize(&functions, 8 * sizeof(void*));
+    
+    while (parser_peekToken(parser).type != TK_EEOF) {
+
+    }
+}
+
+ 

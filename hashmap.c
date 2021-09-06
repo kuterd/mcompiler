@@ -134,6 +134,16 @@ struct hm_bucket_entry* hashmap_get(hashmap_t *hm, struct hm_key *key) {
     return _hashmap_findInBucket(hm, bucket, key);
 }
 
+void hashmap_remove(hashmap_t *hm, struct hm_key *key) {
+    struct list_head *bucket = _hashmap_locateBucket(hm, key);  
+    struct hm_bucket_entry *foundEntry = _hashmap_findInBucket(hm, bucket, key);
+    
+    if (foundEntry) { // if there is a entry already, remove it.
+        list_deattach(&foundEntry->colisions);
+        hm->size--;        
+    }
+}
+
 void hashmap_setRange(hashmap_t *hm, range_t range, struct hm_bucket_entry *entry) {
     //assert(hm->keyType == rangeKeyType && "Wrong key type !!");
     
@@ -152,6 +162,13 @@ struct hm_bucket_entry* hashmap_getRange(hashmap_t *hm, range_t range) {
     return hashmap_get(hm, &key);
 }
 
+void hashmap_removeRange(hashmap_t *hm, range_t range) {
+    struct hm_key key;
+    key.range_key = range;
+    hm_key_init(hm, &key);
+    hashmap_remove(hm, &key); 
+}
+
 struct hm_bucket_entry* hashmap_getInt(hashmap_t *hm, int ikey) {
     //assert(hm->keyType == intKeyType && "Wrong key type !!");
     struct hm_key key;
@@ -166,6 +183,13 @@ void hashmap_setInt(hashmap_t *hm, int ikey, struct hm_bucket_entry *entry) {
     key.i_key = ikey;
     hm_key_init(hm, &key);
     hashmap_set(hm, &key, entry); 
+}
+
+void hashmap_removeInt(hashmap_t *hm, int ikey) {
+    struct hm_key key;
+    key.i_key = ikey;
+    hm_key_init(hm, &key);
+    hashmap_remove(hm, &key); 
 }
 
 struct hm_bucket_entry* hashmap_getPtr(hashmap_t *hm, void *ptr) {
@@ -185,12 +209,71 @@ void hashmap_setPtr(hashmap_t *hm, void *ptr, struct hm_bucket_entry *entry) {
     hashmap_set(hm, &key, entry);
 }
 
+void hashmap_removePtr(hashmap_t *hm, void *ptr) {
+    struct hm_key key;
+    key.ptr = ptr;
+    hm_key_init(hm, &key);
+    hashmap_remove(hm, &key); 
+}
+
 void hashmap_free(hashmap_t *hm) {
     free(hm->buckets);
 }
 
-// -- Hash set --
+struct hashmap_it hashmap_it_init(hashmap_t *hm) {
+    struct hashmap_it result;    
+    result.hm = hm;
+    result.bucket = 0;
+    result.bucketPos = hm->buckets[0].next;
+    return result;
+}
 
+int _hashmap_it_bucketEnd(struct hashmap_it *it) {
+    if (it->bucket >= it->hm->bucketCount)
+        return 1; 
+    // the circular linked list gets lazily initialized.
+    // if the ->next is null that means it is not initialized.
+    // therefore null.
+    return !it->bucketPos->next || it->bucketPos == &it->hm->buckets[it->bucket];
+}
+
+// Find a non empty bucket.
+void _hashmap_it_findNonEmptyBucket(struct hashmap_it *it) {
+    // Go over the buckets until we found a non empty one.    
+    it->bucket++;
+    while(it->bucket < it->hm->bucketCount) {
+        struct list_head *list = &it->hm->buckets[it->bucket]; 
+        it->bucketPos = list->next;
+        
+        if (it->bucketPos && !_hashmap_it_bucketEnd(it))
+            return; 
+        it->bucket++;
+    } 
+}
+
+void hashmap_it_next(struct hashmap_it *it) {
+    assert(!hashmap_it_end(it) && "invalid iterator");
+
+    // if this is the last element, try to find a bucket that isn't empty.
+    if (_hashmap_it_bucketEnd(it)) 
+        _hashmap_it_findNonEmptyBucket(it);
+    else 
+        it->bucketPos = it->bucketPos->next;
+}
+
+int hashmap_it_end(struct hashmap_it *it) {
+    if (_hashmap_it_bucketEnd(it)) 
+      _hashmap_it_findNonEmptyBucket(it);
+ 
+    return _hashmap_it_bucketEnd(it); 
+} 
+
+struct hm_bucket_entry* hashmap_it_get(struct hashmap_it it) {
+    assert(!_hashmap_it_bucketEnd(&it) && "Invalid iterator state");
+    return containerof(it.bucketPos, struct hm_bucket_entry, colisions);
+}
+
+// -- Hash set --
 void hashset_init(hashset_t *hs, struct hm_key_type kType) {
     hashmap_init(&hs->hashmap, kType);
     zone_init(&hs->zone);
@@ -225,6 +308,10 @@ int hashset_existsInt(hashset_t *hs, int ikey) {
     struct hm_bucket_entry *entry = hashmap_getInt(&hs->hashmap, ikey);
     return entry != NULL; 
 }
+
+void hashset_remove(hashset_t *hs, struct hm_key *key) {
+    hashmap_remove(&hs->hashmap, key);
+} 
 
 void hashset_free(hashset_t *hs) {
     zone_free(&hs->zone);

@@ -1,6 +1,6 @@
 #include "list.h"
 #include "codegen.h"
-
+#include "x86_64_codegen.h"
 
 void _lruBump(struct codegen *cg, struct variable *var);
 

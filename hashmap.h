@@ -50,7 +50,7 @@ struct hm_bucket_pointer {
 
 typedef struct {
     // A array of linked lists.
-    struct list_head *buckets; 
+    struct list_head *buckets;
     size_t bucketCount;
     size_t size;
    
@@ -71,20 +71,23 @@ int hm_key_compare(hashmap_t *hm, struct hm_key *a, struct hm_key *b);
 // Init the hashmap, specifying the initial table size.
 void hashmap_inits(hashmap_t *hm, struct hm_key_type kType, size_t bucketCount);
 
-// Init the hashset.
+// Init the hashmap.
 void hashmap_init(hashmap_t *hm, struct hm_key_type kType);
 
-// Rehash the hashset.
+// Rehash the hashmap.
 void hashmap_rehash(hashmap_t *hm);
 
-// Free to hashset.
+// Free to hashmap.
 void hashmap_free(hashmap_t *hm);
 
-// Set to hashset.
+// Set to hashmap.
 void hashmap_set(hashmap_t *hm, struct hm_key *key, struct hm_bucket_entry *entry);
 
-// Get from hashset.
+// Get from hashmap.
 struct hm_bucket_entry* hashmap_get(hashmap_t *hm, struct hm_key *key);
+
+// Remove from hashmap. 
+void hashmap_remove(hashmap_t *hm, struct hm_key *key);
 
 // -- Convinience methods -- 
 
@@ -94,11 +97,17 @@ void hashmap_setRange(hashmap_t *hm, range_t range, struct hm_bucket_entry *entr
 // Get range from hashset.
 struct hm_bucket_entry* hashmap_getRange(hashmap_t *hm, range_t range);
 
+// Remove range from hashset.
+void hashmap_removeRange(hashmap_t *hm, range_t range);
+
 // Set int to hashset.
 void hashmap_setInt(hashmap_t *hm, int ikey, struct hm_bucket_entry *entry);
 
 // Get int from hashmap.
 struct hm_bucket_entry* hashmap_getInt(hashmap_t *hm, int ikey);
+
+// Remove int from hashset.
+void hashmap_removeInt(hashmap_t *hm, int ikey);
 
 // Set pointer to hashmap.
 void hashmap_setPtr(hashmap_t *hm, void *key, struct hm_bucket_entry *entry);
@@ -106,19 +115,27 @@ void hashmap_setPtr(hashmap_t *hm, void *key, struct hm_bucket_entry *entry);
 // Get pointer from the hashmap.
 struct hm_bucket_entry* hashmap_getPtr(hashmap_t *hm, void *key);
 
-// Iterator
+// Remove ptr from hashset.
+void hashmap_removeInt(hashmap_t *hm, int ikey);
+
+// Iterator for hashmap/hashset. Not very fast for sparse hashsets.
+// Consider using a linked list or dbuffer instead.
 
 struct hashmap_it {
+    // hashmap this it is associated with.
     hashmap_t *hm;
     // Index of the current bucket.
     size_t bucket;
     // Position inside the bucket.
-    struct list_head bucketPos;
+    struct list_head *bucketPos;
 };
 
 struct hashmap_it hashmap_it_init(hashmap_t *hm);
-struct hashmap_it hashmap_it_next(struct hashmap_it *it);
-struct hm_bucket_entry* hashmap_it_get(struct hashmap_it *it);
+void hashmap_it_next(struct hashmap_it *it);
+
+// Return 1 if this is the end of the iterator.
+int hashmap_it_end(struct hashmap_it *it); 
+struct hm_bucket_entry* hashmap_it_get(struct hashmap_it it);
 
 // -- Hash set --
 
@@ -128,7 +145,7 @@ void hashset_init(hashset_t *hs, struct hm_key_type kType);
 //free the hashset
 void hashset_free(hashset_t *hs);
 
-// -- hashset Convineience methods -- 
+// -- hashset convineience methods -- 
 
 // Insert pointer to hashset.
 int hashset_insertPtr(hashset_t *hs, void *ptr);

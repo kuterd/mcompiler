@@ -5,6 +5,8 @@
 
 #define FIRST2(a,b,o) o(a)
 
+
+//FIXME: Not all of these token types are implemented.
 #define NAME_TOKENS(o, a)   \
   o(HEX_INT,"hex_int", a)   \
   o(HEX_UINT, "hex_uint", a)\

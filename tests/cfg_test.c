@@ -35,26 +35,23 @@ int main(int argc, char *args[]) {
     
     struct basic_block *entry = block_new(&ctx, fun);
     entry->value.name = RANGE_STRING("entry"); 
-    struct basic_block *loop = block_new(&ctx, fun);
-    loop->value.name = RANGE_STRING("loop"); 
-    struct basic_block *loop2 = block_new(&ctx, fun);
-    loop2->value.name = RANGE_STRING("loop2"); 
+    struct basic_block *a = block_new(&ctx, fun);
+    a->value.name = RANGE_STRING("a"); 
+    struct basic_block *b = block_new(&ctx, fun);
+    b->value.name = RANGE_STRING("b"); 
     
-    struct inst_jump *jmp = inst_new_jump(&ctx, loop);
-    block_insert(entry, &jmp->inst);
+    struct value_constant *cnst = ir_constant_value(&ctx, 1); 
 
-    struct inst_jump *jmp2 = inst_new_jump(&ctx, loop2);
-    block_insert(loop, &jmp2->inst);
 
-    struct inst_jump *jmp3 = inst_new_jump(&ctx, loop);
-    block_insert(loop2, &jmp3->inst);
-//    struct basic_block *entry = create_test_cfg(&ctx);
+    struct inst_jump_cond *cond = inst_new_jump_cond(&ctx, a, b, &cnst->value);
+    block_insert(entry, &cond->inst);
     fun->entry = entry;    
-
 
     struct dominators doms;
     dominators_compute(&doms, entry);
 
+    dominators_dumpDot(&doms, &ctx);
+/*
     struct domfrontiers df;
     domfrontiers_compute(&df, &doms);
 
@@ -62,7 +59,7 @@ int main(int argc, char *args[]) {
     anno.doms = &doms;
     anno.df = &df;
     function_dump(&ctx, fun, &anno);
-
+*/
     ir_context_free(&ctx);
     return 0;
 }

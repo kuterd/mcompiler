@@ -142,6 +142,10 @@ void emit_storeReg64(dbuffer_t *dbuffer, reg64 from, reg64 to);
 
 void emit_subConst64(dbuffer_t *dbuffer, reg64 reg, int imm);
 
+void emit_subLabel64(dbuffer_t *dbuffer, reg64 reg, label_t *label);
+
+void emit_decReg64(dbuffer_t *dbuffer, reg64 reg);
+
 void emit_pushReg(dbuffer_t *dbuffer, reg64 reg);
  
 void emit_popReg(dbuffer_t *dbuffer, reg64 reg);
@@ -150,11 +154,5 @@ void emit_ret(dbuffer_t *dbuffer);
  
 void emit_call(dbuffer_t *dbuffer, label_t *label);
 
-//TODO: MOVE THIS OUT
-int arch_getRealReg(struct variable *var);
-struct variable* arch_initFunctionArg(struct codegen *cg, int i);
-void arch_loadReg(struct codegen *cg, struct variable *var);
-void arch_functionCallArg(struct codegen *cg, struct variable *var, int i);
- 
  
 #endif 

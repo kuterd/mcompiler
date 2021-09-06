@@ -1,8 +1,10 @@
 #include "buffer.h"
 #include "dominators.h"
 #include "hashmap.h"
+#include "dot_builder.h"
 
 #include "ir.h"
+#include "format.h"
 
 #include <limits.h>
 #include <stdint.h>
@@ -69,6 +71,7 @@ void dominators_compute(struct dominators *doms, struct basic_block *entry) {
     size_t elementCount = dPostorder.usage / sizeof(void*); 
     doms->doms = dmalloc(elementCount * sizeof(size_t));
     doms->elementCount = elementCount;
+    doms->domNodes = dmalloc(elementCount * sizeof(struct dom_node));
  
     // set all elements to SIZE_MAX 
     memset(doms->doms, 0xFF, elementCount * sizeof(size_t));    
@@ -106,7 +109,25 @@ void dominators_compute(struct dominators *doms, struct basic_block *entry) {
             doms->doms[i] = newDom;
         } 
     }
+
+    // Construct a dominator tree from the reverse nodes.
+
+    // Start by initializing every tree node.    
+    for (size_t i = 0; i < elementCount; i++) {
+        struct dom_node *dNode = &doms->domNodes[i];
+        dNode->number = i;
+        dbuffer_initSize(&dNode->childs, 8 * sizeof(void*));
+    }
+
+    for (size_t i = 0; i < elementCount; i++) {
+        size_t iDom = doms->doms[i];
+        if (iDom == i)
+            continue;
+        dbuffer_pushPtr(&doms->domNodes[iDom].childs, &doms->domNodes[i]);
+    }
 }
+
+struct basic_block **dominators_getChilds(struct dominators *doms, struct basic_block *, size_t *count); 
 
 struct basic_block* dominators_getIDom(struct dominators *doms, struct basic_block *block) {
     size_t blockNum = dominators_getNumber(doms, block);
@@ -114,8 +135,16 @@ struct basic_block* dominators_getIDom(struct dominators *doms, struct basic_blo
 }
 
 void dominators_free(struct dominators *doms) {
+    for (size_t i = 0;  i < doms->elementCount; i++) {
+        dbuffer_free(&doms->domNodes[i].childs);
+    }
+
+
     zone_free(&doms->allocator);
     hashmap_free(&doms->nodeToNum);
+    free(doms->postorder);
+    free(doms->domNodes);
+    free(doms->doms);
 }
 
 struct df_element {
@@ -136,6 +165,8 @@ struct df_element* _df_getElement(struct domfrontiers *df, struct basic_block *b
 // Compute the dominator frontiers based on the dominators.
 void domfrontiers_compute(struct domfrontiers *df, struct dominators *doms) {
     hashmap_init(&df->dfMap, ptrKeyType);
+    zone_init(&df->zone);
+
     for (size_t i = 0; i < doms->elementCount; i++) {
         struct basic_block *block = doms->postorder[i];
         
@@ -161,3 +192,57 @@ struct basic_block** domfrontiers_get(struct domfrontiers *df, struct basic_bloc
     *size = dfElem->dlist.usage / sizeof(void*); 
     return (struct basic_block**)dfElem->dlist.buffer;
 }
+
+void _dumpDotNode(struct dominators *doms, struct Graph *graph, struct ir_context *ctx, struct dom_node *node) {
+    char nodeName[MAX_NODE_ID];
+    getNodeId(node, nodeName);
+    size_t childCount;
+    struct dom_node **childs = (struct dom_node**)dbuffer_asPtrArray(&node->childs, &childCount);
+
+    struct basic_block *block = doms->postorder[node->number];
+    range_t name = value_getName(ctx, &block->value); 
+    char *props = format("label=\"!{range}\"", name);
+    graph_setNodeProps(graph, nodeName, props);
+    free(props);
+    for (size_t i = 0; i < childCount; i++) {
+        struct dom_node *childNode = childs[i];
+        char childName[MAX_NODE_ID];
+        getNodeId(childNode, childName);
+        graph_addEdge(graph, nodeName, childName);
+        _dumpDotNode(doms, graph, ctx, childNode);
+    }
+}
+
+void dominators_dumpDot(struct dominators *doms, struct ir_context *ctx) {
+    struct Graph graph;
+    graph_init(&graph, "dominators", 1);
+    _dumpDotNode(doms, &graph, ctx, &doms->domNodes[doms->elementCount - 1]);
+    puts(graph_finalize(&graph));
+}
+
+struct dom_node* dominators_getNode(struct dominators *dom, struct basic_block *block) {
+    return &dom->domNodes[dominators_getNumber(dom, block)];
+}
+
+struct dominator_child_it dominator_child_begin(struct dominators *doms, struct basic_block *block) {
+    size_t i = dominators_getNumber(doms, block);
+    struct dom_node *node = &doms->domNodes[i];
+
+    return (struct dominator_child_it){.doms = doms, .node = node, .i = 0};
+}
+
+struct dominator_child_it dominator_child_next(struct dominator_child_it it) {
+    it.i++;
+    return it;
+}
+
+struct basic_block* dominator_child_get(struct dominator_child_it it) {
+    assert(!dominator_child_end(it) && "extected valid iteartor");
+
+    return it.doms->postorder[((struct dom_node**)it.node->childs.buffer)[it.i]->number];
+}
+
+int dominator_child_end(struct dominator_child_it it) {
+    return it.i >= it.node->childs.usage / sizeof(void*);
+}
+

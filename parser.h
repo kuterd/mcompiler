@@ -3,6 +3,7 @@
 
 #include "utils.h"
 #include "buffer.h"
+#include "zone_alloc.h"
 
 #define TK_TOKEN_TYPES(o) \
     o(TK_EEOF)        \
@@ -11,16 +12,26 @@
     o(TK_KW_WHILE)    \
     o(TK_KW_IF)       \
     o(TK_KW_ELSE)     \
+    o(TK_KW_VOID)     \
+    o(TK_KW_INT64)    \
+    o(TK_KW_RETURN)   \
     o(TK_PLUS)        \
     o(TK_MINUS)       \
     o(TK_STRING)      \
     o(TK_MUL)         \
     o(TK_DIV)         \
     o(TK_NUMBER)      \
+    o(TK_ASSIGN)      \
+    o(TK_EQUALS)      \
+    o(TK_GREATER)     \
+    o(TK_LESS_THAN)   \
+    o(TK_LESS_EQ)     \
+    o(TK_GREATER_EQ)  \
     o(TK_CURLY_OPEN)  \
     o(TK_CURLY_CLOSE) \
     o(TK_PARAN_OPEN)  \
     o(TK_PARAN_CLOSE) \
+    o(TK_SEMI_COLON)
 
 enum token_type {
     TK_TOKEN_TYPES(COMMA)
@@ -44,7 +55,8 @@ struct token {
     o(FUNCTION_CALL, function_call) \
     o(BLOCK, block)                 \
     o(PREFIX, prefix)               \
-    o(RETURN, return)
+    o(RETURN, return)               \
+    o(DECLARATION, declaration)
 
 #define AST_TYPE(prefix) struct ast_##prefix
 #define AST_AS_TYPE(ptr, prefix) containerof(ptr, AST_TYPE(prefix), node) 
@@ -64,7 +76,8 @@ struct ast_node {
 
 struct ast_module {
     struct ast_node node;
-
+    
+    // All children must be functions. 
     struct ast_node **childs;
     size_t childCount;
 };
@@ -72,6 +85,10 @@ struct ast_module {
 struct ast_function {
     struct ast_node node;
     range_t name;
+    
+    enum token_type returnType;
+
+    size_t argumentCount; 
     struct ast_node **childs;
     size_t childCount;
 };
@@ -104,8 +121,15 @@ struct ast_block {
 
 struct ast_if {
     struct ast_node node;
-
-    struct ast_node **childs;
+    
+    union {
+        struct ast_node *childs[3];
+        struct {
+            struct ast_node *condition;
+            struct ast_node *ifBlock;
+            struct ast_node *elseBlock;
+        };
+    };
     size_t childCount;
 };
 
@@ -148,6 +172,17 @@ struct ast_prefix {
     };
 };
 
+struct ast_declaration {
+    struct ast_node node;
+    enum token_type dataType;
+
+    union {
+        struct ast_node *childs[1];
+        struct ast_node *assignment;   
+    };
+
+};
+
 struct ast_return {
     struct ast_node node;
 };
@@ -175,9 +210,13 @@ typedef struct {
     int hasPeek;
     struct token peek;
     char *error;
+    zone_allocator zone;
 } parser_t;
 
 struct ast_node* parser_parseExpression(parser_t *parser);
+struct ast_node* parser_parseBlock(parser_t *parser);
+struct ast_node* parser_parseFunction(parser_t *parser);
+
 void parser_init(parser_t *parser, range_t range);
  
 #undef COMMA2

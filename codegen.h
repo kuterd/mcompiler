@@ -60,5 +60,6 @@ int codegen_allocateReg(struct codegen *cg);
 // The register allocator might free the register that this variable lives on
 // at any time. This needs to be called every time variable is used.
 int variable_ref(struct codegen *cg, struct variable *var);
+void variable_store(struct codegen *cg, struct variable *var);
 
 #endif

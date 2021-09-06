@@ -149,7 +149,7 @@ void dbuffer_pushLong(dbuffer_t *dbuffer, unsigned long num, size_t bytes) {
 
 // Push litle endian bytes  
 void dbuffer_pushInt(dbuffer_t *dbuffer, unsigned int num, size_t bytes) {
-    assert(bytes <= 4 && "invalid int size");
+    assert(bytes <= sizeof(size_t) && "invalid int size");
     //num = num << (4 - bytes) * 8;
     
     for (int i = 0; i < bytes; i++) {
@@ -186,8 +186,12 @@ void dbuffer_pushPtr(dbuffer_t *dbuffer, void *pointer) {
     dbuffer_pushData(dbuffer, &pointer, sizeof(void*));
 }
 
-void dbuffer_popPointer(dbuffer_t *dbuffer) {
+void dbuffer_popPtr(dbuffer_t *dbuffer) {
     dbuffer->usage -= sizeof(void*);
+}
+
+void* dbuffer_getLastPtr(dbuffer_t *dbuffer) {
+    return ((void**)dbuffer->buffer)[dbuffer->usage / sizeof(void*) - 1];
 }
 
 void dbuffer_pushUIntHexStr(dbuffer_t *dbuffer, unsigned int number) {
@@ -240,6 +244,11 @@ void dbuffer_pushIntStr(dbuffer_t *dbuffer, int number) {
 
 range_t dbuffer_asRange(dbuffer_t *dbuffer) {
     return (range_t) {.ptr=dbuffer->buffer, .size=dbuffer->usage};
+}
+
+void** dbuffer_asPtrArray(dbuffer_t *dbuffer, size_t *size) {
+    *size = dbuffer->usage / sizeof(void*);
+    return (void**)dbuffer->buffer;
 }
 
 void dbuffer_swap(dbuffer_t *a, dbuffer_t *b) {

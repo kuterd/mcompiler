@@ -21,6 +21,7 @@ enum reloc_type {
 
 size_t getRelocSize(enum reloc_size size);
 
+//TODO: Maybe use a dbuffer instead of linked list
 struct relocation {
     enum reloc_type type;  
     enum reloc_size size;

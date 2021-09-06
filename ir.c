@@ -7,7 +7,12 @@ char *kBinaryOpNames[] = {
     "add",
     "sub",
     "mul",
-    "div"
+    "div",
+    "equals",
+    "less",
+    "greater",
+    "less_eq",
+    "greater_eq"
 };
 
 char *kDataTypeNames[] = {
@@ -25,6 +30,7 @@ char *kInstNames[] = {
 
 void ir_context_init(struct ir_context *context) {
     LIST_INIT(&context->functions);
+    LIST_INIT(&context->specialInstructions);
     zone_init(&context->alloc);
 }
 
@@ -51,9 +57,14 @@ void inst_setUse(struct ir_context *ctx, struct instruction *inst, size_t useOff
     struct use **uses = inst_getUses(inst, &useCount); 
     
     assert(useOffset < useCount && "invalid use"); 
-    //assert(uses[useOffset] != NULL && "There is a use already");
+    struct use *use = uses[useOffset];
+    //NOTE: Maybe not store uses as a 
+    if (use == NULL)
+        use = znnew(&ctx->alloc, struct use);
+    else
+        // if there is a use already, remove it from the value list.
+        list_deattach(&use->useList); 
 
-    struct use *use = znnew(&ctx->alloc, struct use);
     use->inst = inst;
     use->value = value;
     
@@ -61,13 +72,14 @@ void inst_setUse(struct ir_context *ctx, struct instruction *inst, size_t useOff
     uses[useOffset] = use;    
 }
 
-void inst_replaceUse(struct use **use, struct value *value) {
-    //TODO
-}
-
 void inst_insertAfter(struct instruction *inst, struct instruction *add) {
     list_addAfter(&inst->inst_list, &add->inst_list); 
 }
+
+void inst_remove(struct instruction *inst) {
+    list_deattach(&inst->inst_list);
+}
+
 
 struct basic_block* block_new(struct ir_context *ctx, struct function *fn) {
     struct basic_block* block = znnew(&ctx->alloc, struct basic_block);
@@ -75,16 +87,6 @@ struct basic_block* block_new(struct ir_context *ctx, struct function *fn) {
     _value_init(&block->value, V_BLOCK, DT_BLOCK);
     LIST_INIT(&block->instructions);
 }
-
-// We assign numbers to values that should not be printed inline.
-// this is currently only instructions. 
-//
-// %3 = load_var 1
-// add %3, 10 
-struct element_name {
-    size_t num; // Number assigned to the value. 
-    struct hm_bucket_entry entry;
-};
 
 void block_dump(struct ir_context *ctx, struct basic_block *block, dbuffer_t *dbuffer,
                 int dot, struct ir_print_annotations *annotations);
@@ -123,20 +125,34 @@ void value_setName(struct ir_context *ctx, struct value *value, range_t name) {
     value->name.ptr = ptr;
 }
 
-void function_dump(struct ir_context *ctx, struct function *fun, struct ir_print_annotations *annotations) {
 
+void value_replaceAllUses(struct value *value, struct value *replacement) {
+    for (struct list_head *current = value->uses.next, *next;
+             current != &value->uses; current = next) {
+        struct use *use = containerof(current, struct use, useList);
+        next = use->useList.next; 
+        
+        // remove the use from the old value's use list.
+        list_deattach(&use->useList);
+        list_add(&replacement->uses, &use->useList);
+        use->value = replacement; 
+    };
+}
+
+void function_dump(struct ir_context *ctx, struct function *fun, struct ir_print_annotations *annotations) {
     printf("%s function %.*s\n", kDataTypeNames[fun->returnType],
             fun->value.name.size, fun->value.name.ptr);
     hashset_t visited;
     hashset_init(&visited, ptrKeyType); 
+    
+    dbuffer_t content;
+    dbuffer_init(&content);
 
     dbuffer_t toVisit, newVisit;
     dbuffer_init(&toVisit);
     dbuffer_init(&newVisit);
     dbuffer_pushPtr(&toVisit, fun->entry); 
-    dbuffer_t content;
-    dbuffer_init(&content);
-            
+           
     while (toVisit.usage != 0) {
         for (size_t i = 0; i < toVisit.usage / sizeof(void*); i++) {
             struct basic_block *block = ((struct basic_block**)toVisit.buffer)[i];
@@ -154,8 +170,6 @@ void function_dump(struct ir_context *ctx, struct function *fun, struct ir_print
                 struct basic_block *succ = block_successor_get(it);
                 dbuffer_pushPtr(&newVisit, succ); 
             }
-
-
         }
 
         dbuffer_clear(&toVisit);
@@ -227,6 +241,17 @@ void function_dumpDot(struct ir_context *ctx, struct function *fun, struct ir_pr
     free(result);
 }
 
+void inst_dumpd(struct ir_context *ctx, struct instruction *inst, dbuffer_t *dbuffer, size_t dot);
+
+void inst_dump(struct ir_context *ctx, struct instruction *inst) {
+    dbuffer_t dbuffer;
+    dbuffer_init(&dbuffer);
+    inst_dumpd(ctx, inst, &dbuffer, 0);
+    dbuffer_pushChar(&dbuffer, 0);
+    puts(dbuffer.buffer);
+    dbuffer_free(&dbuffer);
+}
+
 // We need to have a hack for proper dot formatting.
 #define _B_NEW_LINE dbuffer_pushStr(dbuffer, dot ? "\\l" : "\n") 
 
@@ -264,55 +289,64 @@ void block_dump(struct ir_context *ctx, struct basic_block *block, dbuffer_t *db
 
     LIST_FOR_EACH(&block->instructions) {
         struct instruction *inst = containerof(c, struct instruction, inst_list);
-        
-        if (inst->value.dataType != VOID) {
-            range_t vName = value_getName(ctx, &inst->value);
-            format_dbuffer("%{range} = ", dbuffer, vName);
-        }
-        format_dbuffer("{str} ", dbuffer, kInstNames[inst->type]);
-
-        //Custom inline paramaters. 
-        switch(inst->type)  {
-            case INST_LOAD_VAR:
-                format_dbuffer("{int}", dbuffer, IR_INST_AS_TYPE(inst, struct inst_load_var)->rId);
-                break;
-            case INST_ASSIGN_VAR:
-                format_dbuffer("{int}, ", dbuffer, IR_INST_AS_TYPE(inst, struct inst_assign_var)->rId);
-                break;
-            case INST_BINARY:
-                format_dbuffer("{str} ", dbuffer,
-                        kBinaryOpNames[IR_INST_AS_TYPE(inst, struct inst_binary)->op]);
-                break;
-        }
-
-        // Uses
-        size_t count = 0;
-        struct use **uses = inst_getUses(inst, &count);
-        
-        for (int i = 0; i < count; i++) {
-            struct value *value = uses[i]->value;
-            switch(value->type) {
-                case V_BLOCK: 
-                case INST: {
-                    range_t vName = value_getName(ctx, value);
-                    format_dbuffer("%{range}", dbuffer, vName); 
-                    break;
-                }
-                case CONST: {
-                    // Just materialize the constant inline.
-                    struct value_constant *vConst = containerof(value, struct value_constant, value);
-                    format_dbuffer("{int}", dbuffer, vConst->number); 
-                    break;
-                }
-                default:
-                    assert(0 && "Unknown value type");
-            }
-            if (i != count - 1)
-               dbuffer_pushStr(dbuffer, ", ");
-        }
-
-        _B_NEW_LINE; 
+        inst_dumpd(ctx, inst, dbuffer, dot); 
     }
+}
+
+void inst_dumpd(struct ir_context *ctx, struct instruction *inst, dbuffer_t *dbuffer, size_t dot) {
+    if (inst->value.dataType != VOID) {
+        range_t vName = value_getName(ctx, &inst->value);
+        format_dbuffer("%{range} = ", dbuffer, vName);
+    }
+    format_dbuffer("{str} ", dbuffer, kInstNames[inst->type]);
+
+    //Custom inline paramaters. 
+    switch(inst->type)  {
+        case INST_LOAD_VAR:
+            format_dbuffer("{int}", dbuffer, IR_INST_AS_TYPE(inst, struct inst_load_var)->rId);
+            break;
+        case INST_ASSIGN_VAR:
+            format_dbuffer("{int}, ", dbuffer, IR_INST_AS_TYPE(inst, struct inst_assign_var)->rId);
+            break;
+        case INST_BINARY:
+            format_dbuffer("{str} ", dbuffer,
+                    kBinaryOpNames[IR_INST_AS_TYPE(inst, struct inst_binary)->op]);
+            break;
+    }
+
+    // Uses
+    size_t count = 0;
+    struct use **uses = inst_getUses(inst, &count);
+
+    for (int i = 0; i < count; i++) {
+        struct value *value = uses[i]->value;
+        switch(value->type) {
+            case V_BLOCK: 
+            case INST: {
+                range_t vName = value_getName(ctx, value);
+                format_dbuffer("%{range}", dbuffer, vName); 
+                break;
+            }
+            case CONST: {
+                // Just materialize the constant inline.
+                struct value_constant *vConst = containerof(value, struct value_constant, value);
+                format_dbuffer("{int}", dbuffer, vConst->number); 
+                break;
+            }
+            default:
+                assert(0 && "Unknown value type");
+        }
+        if (i != count - 1)
+        dbuffer_pushStr(dbuffer, ", ");
+    }
+    _B_NEW_LINE; 
+}
+
+
+// Insert a instruction at the top.
+void block_insertTop(struct basic_block *block, struct instruction *inst) {
+    list_addAfter(&block->instructions, &inst->inst_list);
+    inst->parent = block;
 }
 
 void block_insert(struct basic_block *block, struct instruction *add) {
@@ -330,6 +364,7 @@ struct instruction* block_lastInstruction(struct basic_block *block) {
 #define GEN_NEW_INST(enu, prefix) INST_TYPE(prefix)*                       \
     _inst_new_##prefix(struct ir_context *ctx, enum value_type type) {     \
     INST_TYPE(prefix) *result = znnew(&ctx->alloc, INST_TYPE(prefix));     \
+    *result = (INST_TYPE(prefix)){};                                       \
     _value_init(&result->inst.value, INST, type);                          \
     result->inst.type = enu;                                               \
     return result;                                                         \
@@ -365,9 +400,9 @@ struct inst_assign_var* inst_new_assign_var(struct ir_context *ctx, size_t i, st
 struct inst_binary* inst_new_binary(struct ir_context *ctx, enum binary_ops type, struct value *a, struct value *b) {
     assert(a->dataType == b->dataType && "data type mismatch");
     
-    struct inst_binary *bin = _inst_new_binary(ctx, INT64);
+    struct inst_binary *bin = _inst_new_binary(ctx, a->dataType);
     bin->op = type;
-
+    
     inst_setUse(ctx, &bin->inst, 0, a);
     inst_setUse(ctx, &bin->inst, 1, b);
     return bin;
@@ -381,22 +416,55 @@ struct inst_jump* inst_new_jump(struct ir_context *ctx, struct basic_block *bloc
 
 struct inst_jump_cond* inst_new_jump_cond(struct ir_context *ctx, struct basic_block *a, struct basic_block *b, struct value *cond) {
     struct inst_jump_cond *jump = _inst_new_jump_cond(ctx, VOID);
-   
-    inst_setUse(ctx, &jump->inst, 0, cond);
-    inst_setUse(ctx, &jump->inst, 1, &a->value);
-    inst_setUse(ctx, &jump->inst, 2, &b->value);
- 
-    return  jump;
+    inst_setUse(ctx, &jump->inst, 0, &a->value);
+    inst_setUse(ctx, &jump->inst, 1, &b->value);
+    inst_setUse(ctx, &jump->inst, 2, cond);
+
+    return jump;
 }
 
 struct inst_return* inst_new_return(struct ir_context *ctx) {
     return _inst_new_return(ctx, VOID);
 }
 
+
+struct inst_phi* inst_new_phi(struct ir_context *ctx, enum data_type type, size_t valueCount) {
+    struct inst_phi *phi = _inst_new_phi(ctx, type);
+
+    // We store block and value.
+    size_t useReserve = max(valueCount, 8) * 2;
+    dbuffer_initSize(&phi->useBuffer, sizeof(void*) * useReserve); 
+    phi->useCount = valueCount * 2;
+    phi->uses = (struct use**)&phi->useBuffer.buffer;
+
+    list_add(&ctx->specialInstructions, &phi->specialList);
+
+    return phi; 
+}
+
+void inst_phi_insertValue(struct inst_phi *phi, struct ir_context *ctx, struct basic_block *block, struct value *value) {
+    // iterate over the uses to make sure we don't have already have the value.
+    for (size_t i = 0; i < phi->useCount; i += 2) {
+        if (phi->uses[i]->value == &block->value && phi->uses[i + 1]->value == value)
+            return;
+    }
+   
+    // I am not sure if this should be allocated from the ir context allocator.
+    dbuffer_pushPtr(&phi->useBuffer, NULL);
+    dbuffer_pushPtr(&phi->useBuffer, NULL);
+
+    phi->uses = (struct use**)phi->useBuffer.buffer;
+    phi->useCount += 2;
+
+    // set the uses for the values.
+    inst_setUse(ctx, &phi->inst, phi->useCount - 2, &block->value);
+    inst_setUse(ctx, &phi->inst, phi->useCount - 1, value);
+}
+
 // Instruction that use a constant number of values.
 #define INST_CONSTANT_USE(o)               \
     o(INST_LOAD_VAR, load_var, 0)          \
-    o(INST_ASSIGN_VAR, assign_var, 1)        \
+    o(INST_ASSIGN_VAR, assign_var, 1)      \
     o(INST_BINARY, binary, 2)              \
     o(INST_JUMP, jump, 1)                  \
     o(INST_JUMP_COND, jump_cond, 3)
@@ -420,6 +488,7 @@ case enu: {                                                                \
     *count = instType->useCount;                                           \
     return instType->uses;                                                 \
 } 
+
 /*
 void ir_addFunction(struct ir_context *context, struct function *function) {
     hashmap_setRange(&context->functionNames, function->name);
@@ -457,6 +526,8 @@ struct basic_block* block_predecessor_get(struct block_predecessor_it it) {
 }
 
 void _block_successor_read(struct block_successor_it *it) {
+    if (!it->inst)
+        return;
     size_t count = 0;
     struct use **uses = inst_getUses(it->inst, &count);
     
@@ -473,8 +544,15 @@ void _block_successor_read(struct block_successor_it *it) {
 
 struct block_successor_it block_successor_begin(struct basic_block *block) {
     struct instruction *inst = block_lastInstruction(block);
-    struct block_successor_it it;
-    it.i = 0;
+    
+    // Tecnically, blocks should end either with a return or with a jump.
+    // Gracefully handle if the last instructions is a phi.
+    // If we ever add more instructions that 
+    // reference blocks, they should be included here.
+   if (inst && inst->type == INST_PHI)
+        inst = NULL;  
+
+    struct block_successor_it it = (struct block_successor_it) {};
     it.inst = inst;
     _block_successor_read(&it); 
     return it;

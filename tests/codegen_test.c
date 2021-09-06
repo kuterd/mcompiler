@@ -1,6 +1,7 @@
 #include "platform_utils.h"
 #include "codegen.h"
 #include "x86_64.h"
+#include "x86_64_codegen.h"
 
 int main() {
     struct codegen cg;

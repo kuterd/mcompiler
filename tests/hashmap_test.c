@@ -35,6 +35,13 @@ void hashmap_test() {
     for (int i = 0; i < 1000; i++) {
         key_check(&hm, i);
     }
+
+    for (struct hashmap_it it = hashmap_it_init(&hm); !hashmap_it_end(&it); hashmap_it_next(&it)) {
+        struct hm_bucket_entry *entry = hashmap_it_get(it);
+        struct test_struct *tstruct = containerof(entry, struct test_struct, bucket);
+        printf("%d\n", tstruct->id);
+    } 
+
     zone_free(&zone);
     hashmap_free(&hm);
 }

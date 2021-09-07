@@ -8,7 +8,7 @@
 
 #define IR_VALUE_AS_TYPE(ptr, type) containerof(ptr, type, value)
 #define IR_INST_AS_TYPE(ptr, type) containerof(ptr, type, inst)
-#define IR_VALUE_AS_INST(ptr, type) containerof(containerof(ptr, struct instruction, value), type, inst)
+#define IR_VALUE_AS_INST(ptr, type) containerof(containerof(ptr, instruction_t, value), type, inst)
 
 // load_var, store_var instructions are only valid before SSA conversion.
 // instructions that can jump to other blocks con only be the last instruction inside a basic_block
@@ -99,6 +99,7 @@ struct function {
 };
 
 struct instruction;
+typedef struct instruction instruction_t;
 
 // A constant value.
 struct value_constant {
@@ -119,7 +120,7 @@ enum instruction_type {
 // This is the edge between a instruction and a value.
 // a value can have mulitple users.
 struct use {
-    struct instruction *inst; 
+    instruction_t *inst; 
     struct value *value;
     struct list_head useList;
 };
@@ -135,7 +136,7 @@ struct instruction {
 
 // A phi instruction, used for the SSA form.
 struct inst_phi {
-    struct instruction inst;
+    instruction_t inst;
      
     dbuffer_t useBuffer; 
 
@@ -163,7 +164,7 @@ enum binary_ops {
 
 // A binary instruction(add, subtract, multiply ...).
 struct inst_binary {
-    struct instruction inst;
+    instruction_t inst;
     enum binary_ops op;
     union {
         struct use *uses[2];
@@ -176,14 +177,14 @@ struct inst_binary {
 
 // A load instruction, only valid before SSA conversion.
 struct inst_load_var {
-    struct instruction inst;
+    instruction_t inst;
     size_t rId;
     struct use *uses[0];
 };
 
 // An assign instruction, only valid before SSA conversion.
 struct inst_assign_var {
-    struct instruction inst;
+    instruction_t inst;
     size_t rId;
     
     union {
@@ -194,7 +195,7 @@ struct inst_assign_var {
 
 // A function call instruction.
 struct inst_function_call {
-    struct instruction inst;
+    instruction_t inst;
     
     // A function call have variable number of uses,
     // this is needed for passing arguments.
@@ -204,19 +205,19 @@ struct inst_function_call {
 
 // A jump instruction, jumps to a basic block.
 struct inst_jump {
-    struct instruction inst;
+    instruction_t inst;
     struct use *uses[1];
 };
 
 // A conditional jump instruction, jumps to basic block conditionally.
 struct inst_jump_cond {
-    struct instruction inst;
+    instruction_t inst;
     struct use *uses[3];
 };
 
 // A return instruction.
 struct inst_return {
-    struct instruction inst;
+    instruction_t inst;
     size_t hasReturn;
     struct use *uses[1];
 };
@@ -246,7 +247,7 @@ void function_dump(struct ir_context *ctx, function_t *fun, struct ir_print_anno
 void function_dumpDot(struct ir_context *ctx, function_t *fun, struct ir_print_annotations *annotations);
 
 // dump a instruction.
-void inst_dump(struct ir_context *ctx, struct instruction *inst);
+void inst_dump(struct ir_context *ctx, instruction_t *inst);
 
 //void block_dump(struct ir_context *ctx, basic_block_t *block);
 
@@ -287,25 +288,25 @@ void inst_phi_insertValue(struct inst_phi *phi, struct ir_context *ctx, basic_bl
 function_t* ir_new_function(struct ir_context *context, range_t name);
 
 // Set a use of the instruction.
-void inst_setUse(struct ir_context *ctx, struct instruction *inst, size_t useOffset, struct value *value);
+void inst_setUse(struct ir_context *ctx, instruction_t *inst, size_t useOffset, struct value *value);
 
 // Insert a instruction after the inst.
-void inst_insertAfter(struct instruction *inst, struct instruction *add);
+void inst_insertAfter(instruction_t *inst, instruction_t *add);
 
 // Remove a instruction from the block it is on.
-void inst_remove(struct instruction *inst);
+void inst_remove(instruction_t *inst);
 
 // Create a new block
 basic_block_t* block_new(struct ir_context *ctx, function_t *fn);
 
 // Insert a instruction at the top.
-void block_insertTop(basic_block_t *block, struct instruction *inst);
+void block_insertTop(basic_block_t *block, instruction_t *inst);
 
 // Insert a instruction at the end.
-void block_insert(basic_block_t *block, struct instruction *inst);
+void block_insert(basic_block_t *block, instruction_t *inst);
 
 // Get the uses for a instruction.
-struct use** inst_getUses(struct instruction *inst, size_t *count);
+struct use** inst_getUses(instruction_t *inst, size_t *count);
 
 // Create a new constant value.
 struct value_constant* ir_constant_value(struct ir_context *ctx, int64_t value);
@@ -327,7 +328,7 @@ basic_block_t* block_predecessor_get(struct block_predecessor_it it);
 // iteartor of blocks that are can be branched from this block. 
 struct block_successor_it {
     basic_block_t *next;    
-    struct instruction *inst;
+    instruction_t *inst;
     size_t i;
 };
 

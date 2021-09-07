@@ -158,12 +158,12 @@ void ssa_rename(struct ir_context *ctx, struct block_info *bInfoArray,
 
     // Iterate over loads and stores inside this block.
     size_t instCount; 
-    struct instruction **loadAssignArray = 
-        (struct instruction**)dbuffer_asPtrArray(&bInfo->loadAssigns, &instCount);
+    instruction_t **loadAssignArray = 
+        (instruction_t**)dbuffer_asPtrArray(&bInfo->loadAssigns, &instCount);
 
     // Renaming within the block.    
     for (size_t i = 0; i < instCount; i++) {
-        struct instruction *inst = loadAssignArray[i];
+        instruction_t *inst = loadAssignArray[i];
         if (inst->type == INST_LOAD_VAR) {
             struct inst_load_var *load = containerof(inst, struct inst_load_var, inst);
             struct value *lastValue = _getLastValue(variableMap, load->rId); 
@@ -211,7 +211,7 @@ void ssa_rename(struct ir_context *ctx, struct block_info *bInfoArray,
     // We should remove same number of values we pushed from the stack for each reg.
     // Order doesn't matter ofc.
     for (size_t i = 0; i < instCount; i++) {
-        struct instruction *inst = loadAssignArray[i];
+        instruction_t *inst = loadAssignArray[i];
         if (inst->type == INST_ASSIGN_VAR) {
             struct inst_assign_var *assign = containerof(inst, struct inst_assign_var, inst);
             _popValue(variableMap, assign->rId); 
@@ -257,7 +257,7 @@ void ssa_convert(struct ir_context *ctx, function_t *fun,
         // Iterate over instructions inside the block.
         // we will process loads and assigns. 
         LIST_FOR_EACH(&block->instructions) {
-            struct instruction *inst = containerof(c, struct instruction, inst_list);
+            instruction_t *inst = containerof(c, instruction_t, inst_list);
             if (inst->type == INST_LOAD_VAR) {
                 struct inst_load_var *lVar = containerof(inst, struct inst_load_var, inst);               
                 struct reg_block_info *rInfo = _getOrCreateRegInfo(bInfo, &bInfo->regList, &zone, lVar->rId);

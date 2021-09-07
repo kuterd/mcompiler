@@ -55,7 +55,7 @@ struct value_constant* ir_constant_value(struct ir_context *ctx, int64_t value) 
    return result; 
 }
 
-void inst_setUse(struct ir_context *ctx, struct instruction *inst, size_t useOffset, struct value *value) {
+void inst_setUse(struct ir_context *ctx, instruction_t *inst, size_t useOffset, struct value *value) {
     size_t useCount = 0;
     struct use **uses = inst_getUses(inst, &useCount); 
     
@@ -75,11 +75,11 @@ void inst_setUse(struct ir_context *ctx, struct instruction *inst, size_t useOff
     uses[useOffset] = use;    
 }
 
-void inst_insertAfter(struct instruction *inst, struct instruction *add) {
+void inst_insertAfter(instruction_t *inst, instruction_t *add) {
     list_addAfter(&inst->inst_list, &add->inst_list); 
 }
 
-void inst_remove(struct instruction *inst) {
+void inst_remove(instruction_t *inst) {
     list_deattach(&inst->inst_list);
 }
 
@@ -100,7 +100,7 @@ function_t* value_getFunction(struct value *value) {
         basic_block_t *block = containerof(value, basic_block_t, value);
         return block->parent;
     } else if (value->type == INST) {
-        struct instruction *inst = containerof(value, struct instruction, value);
+        instruction_t *inst = containerof(value, instruction_t, value);
         return inst->parent->parent;
     }
     //FIXME: Support arguments.
@@ -244,9 +244,9 @@ void function_dumpDot(struct ir_context *ctx, function_t *fun, struct ir_print_a
     free(result);
 }
 
-void inst_dumpd(struct ir_context *ctx, struct instruction *inst, dbuffer_t *dbuffer, size_t dot);
+void inst_dumpd(struct ir_context *ctx, instruction_t *inst, dbuffer_t *dbuffer, size_t dot);
 
-void inst_dump(struct ir_context *ctx, struct instruction *inst) {
+void inst_dump(struct ir_context *ctx, instruction_t *inst) {
     dbuffer_t dbuffer;
     dbuffer_init(&dbuffer);
     inst_dumpd(ctx, inst, &dbuffer, 0);
@@ -291,12 +291,12 @@ void block_dump(struct ir_context *ctx, basic_block_t *block, dbuffer_t *dbuffer
     }
 
     LIST_FOR_EACH(&block->instructions) {
-        struct instruction *inst = containerof(c, struct instruction, inst_list);
+        instruction_t *inst = containerof(c, instruction_t, inst_list);
         inst_dumpd(ctx, inst, dbuffer, dot); 
     }
 }
 
-void inst_dumpd(struct ir_context *ctx, struct instruction *inst, dbuffer_t *dbuffer, size_t dot) {
+void inst_dumpd(struct ir_context *ctx, instruction_t *inst, dbuffer_t *dbuffer, size_t dot) {
     if (inst->value.dataType != VOID) {
         range_t vName = value_getName(ctx, &inst->value);
         format_dbuffer("%{range} = ", dbuffer, vName);
@@ -347,20 +347,20 @@ void inst_dumpd(struct ir_context *ctx, struct instruction *inst, dbuffer_t *dbu
 
 
 // Insert a instruction at the top.
-void block_insertTop(basic_block_t *block, struct instruction *inst) {
+void block_insertTop(basic_block_t *block, instruction_t *inst) {
     list_addAfter(&block->instructions, &inst->inst_list);
     inst->parent = block;
 }
 
-void block_insert(basic_block_t *block, struct instruction *add) {
+void block_insert(basic_block_t *block, instruction_t *add) {
    add->parent = block; 
    list_add(&block->instructions, &add->inst_list);
 } 
 
-struct instruction* block_lastInstruction(basic_block_t *block) {
+instruction_t* block_lastInstruction(basic_block_t *block) {
     if (list_empty(&block->instructions))
         return NULL;
-    return containerof(block->instructions.prev, struct instruction, inst_list);
+    return containerof(block->instructions.prev, instruction_t, inst_list);
 }
 
 // Boiler plate stuff
@@ -476,7 +476,7 @@ void inst_phi_insertValue(struct inst_phi *phi, struct ir_context *ctx, basic_bl
     o(INST_PHI, phi)                    \
     o(INST_FUNCTION_CALL, function_call)
 
-//Note: Maybe the struct instruction itself can hold the pointer to the uses. 
+//Note: Maybe the instruction_t itself can hold the pointer to the uses. 
 
 #define GEN_INST_CONSTANT_USE(enu, prefix, c)                                \
     case enu: {                                                              \
@@ -499,7 +499,7 @@ void ir_addFunction(struct ir_context *context, function_t *function) {
 } 
 */
 
-struct use** inst_getUses(struct instruction *inst, size_t *count) {
+struct use** inst_getUses(instruction_t *inst, size_t *count) {
     switch(inst->type) {
         INST_CONSTANT_USE(GEN_INST_CONSTANT_USE)
         INST_VARIABLE_USE(GEN_INST_VARIABLE_USE)
@@ -546,7 +546,7 @@ void _block_successor_read(struct block_successor_it *it) {
 }
 
 struct block_successor_it block_successor_begin(basic_block_t *block) {
-    struct instruction *inst = block_lastInstruction(block);
+    instruction_t *inst = block_lastInstruction(block);
     
     // Tecnically, blocks should end either with a return or with a jump.
     // Gracefully handle if the last instructions is a phi.

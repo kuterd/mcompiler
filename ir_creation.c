@@ -94,7 +94,7 @@ struct value* create_number(struct ir_creator *creator, struct ast_number *numbe
 
 struct value* create_value(struct ir_creator *creator, struct ast_node *node);
 
-struct instruction* create_assignment(struct ir_creator *creator, struct ast_binary_exp *exp) {
+instruction_t* create_assignment(struct ir_creator *creator, struct ast_binary_exp *exp) {
     struct ast_variable *variable = AST_AS_TYPE(exp->left, variable);
     struct variable *var = _findReg(creator, variable->varName); 
 
@@ -147,7 +147,7 @@ struct value* create_binary(struct ir_creator *creator, struct ast_binary_exp *b
     return &result->inst.value;
 }
 
-struct instruction* create_variable(struct ir_creator *creator, struct ast_variable *var) {
+instruction_t* create_variable(struct ir_creator *creator, struct ast_variable *var) {
     struct variable *varInfo = _findReg(creator, var->varName);
     struct inst_load_var *loadVar = inst_new_load_var(_ ctx, varInfo->rId, convertDataType(varInfo->dataType)); 
     block_insert(_ block, &loadVar->inst);

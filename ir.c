@@ -41,21 +41,21 @@ void ir_context_free(ir_context_t *context) {
    zone_free(&context->alloc);
 }
 
-void _value_init(struct value *value, enum value_type type, enum data_type dataType) { 
+void _value_init(value_t *value, enum value_type type, enum data_type dataType) { 
    value->type = type;
    LIST_INIT(&value->uses); 
    value->dataType = dataType;
 }
 
-struct value_constant* ir_constant_value(ir_context_t *ctx, int64_t value) {
+value_constant_t* ir_constant_value(ir_context_t *ctx, int64_t value) {
     //TODO: Constant uniqeing.
-   struct value_constant *result = znnew(&ctx->alloc, struct value_constant);
+   value_constant_t *result = znnew(&ctx->alloc, value_constant_t);
    _value_init(&result->value, CONST, INT64);
    result->number = value;
    return result; 
 }
 
-void inst_setUse(ir_context_t *ctx, instruction_t *inst, size_t useOffset, struct value *value) {
+void inst_setUse(ir_context_t *ctx, instruction_t *inst, size_t useOffset, value_t *value) {
     size_t useCount = 0;
     use_t **uses = inst_getUses(inst, &useCount); 
     
@@ -95,7 +95,7 @@ void block_dump(ir_context_t *ctx, basic_block_t *block, dbuffer_t *dbuffer,
                 int dot, struct ir_print_annotations *annotations);
 
 
-function_t* value_getFunction(struct value *value) {
+function_t* value_getFunction(value_t *value) {
     if (value->type == V_BLOCK) {
         basic_block_t *block = containerof(value, basic_block_t, value);
         return block->parent;
@@ -107,7 +107,7 @@ function_t* value_getFunction(struct value *value) {
     return NULL;
 }  
 
-range_t value_getName(ir_context_t *ctx, struct value *value) {
+range_t value_getName(ir_context_t *ctx, value_t *value) {
     if (value->name.size != 0)
         return value->name;
     // Generate a name for this value.
@@ -121,7 +121,7 @@ range_t value_getName(ir_context_t *ctx, struct value *value) {
 
 }
 
-void value_setName(ir_context_t *ctx, struct value *value, range_t name) {
+void value_setName(ir_context_t *ctx, value_t *value, range_t name) {
     char *ptr = zone_alloc(&ctx->alloc, name.size);
     memcpy(ptr, name.ptr, name.size);  
     value->name.size = name.size;
@@ -129,7 +129,7 @@ void value_setName(ir_context_t *ctx, struct value *value, range_t name) {
 }
 
 
-void value_replaceAllUses(struct value *value, struct value *replacement) {
+void value_replaceAllUses(value_t *value, value_t *replacement) {
     for (struct list_head *current = value->uses.next, *next;
              current != &value->uses; current = next) {
         use_t *use = containerof(current, use_t, useList);
@@ -322,7 +322,7 @@ void inst_dumpd(ir_context_t *ctx, instruction_t *inst, dbuffer_t *dbuffer, size
     use_t **uses = inst_getUses(inst, &count);
 
     for (int i = 0; i < count; i++) {
-        struct value *value = uses[i]->value;
+        value_t *value = uses[i]->value;
         switch(value->type) {
             case V_BLOCK: 
             case INST: {
@@ -332,7 +332,7 @@ void inst_dumpd(ir_context_t *ctx, instruction_t *inst, dbuffer_t *dbuffer, size
             }
             case CONST: {
                 // Just materialize the constant inline.
-                struct value_constant *vConst = containerof(value, struct value_constant, value);
+                value_constant_t *vConst = containerof(value, value_constant_t, value);
                 format_dbuffer("{int}", dbuffer, vConst->number); 
                 break;
             }
@@ -392,7 +392,7 @@ inst_load_var_t* inst_new_load_var(ir_context_t *ctx, size_t i, enum data_type t
     return var; 
 }
 
-inst_assign_var_t* inst_new_assign_var(ir_context_t *ctx, size_t i, struct value *value) {
+inst_assign_var_t* inst_new_assign_var(ir_context_t *ctx, size_t i, value_t *value) {
     inst_assign_var_t *var = _inst_new_assign_var(ctx, VOID);
     var->rId = i;
     
@@ -400,7 +400,7 @@ inst_assign_var_t* inst_new_assign_var(ir_context_t *ctx, size_t i, struct value
     return var;
 }
 
-inst_binary_t* inst_new_binary(ir_context_t *ctx, enum binary_ops type, struct value *a, struct value *b) {
+inst_binary_t* inst_new_binary(ir_context_t *ctx, enum binary_ops type, value_t *a, value_t *b) {
     assert(a->dataType == b->dataType && "data type mismatch");
     
     inst_binary_t *bin = _inst_new_binary(ctx, a->dataType);
@@ -417,7 +417,7 @@ inst_jump_t* inst_new_jump(ir_context_t *ctx, basic_block_t *block) {
     return jump;
 }
 
-inst_jump_cond_t* inst_new_jump_cond(ir_context_t *ctx, basic_block_t *a, basic_block_t *b, struct value *cond) {
+inst_jump_cond_t* inst_new_jump_cond(ir_context_t *ctx, basic_block_t *a, basic_block_t *b, value_t *cond) {
     inst_jump_cond_t *jump = _inst_new_jump_cond(ctx, VOID);
     inst_setUse(ctx, &jump->inst, 0, &a->value);
     inst_setUse(ctx, &jump->inst, 1, &b->value);
@@ -445,7 +445,7 @@ inst_phi_t* inst_new_phi(ir_context_t *ctx, enum data_type type, size_t valueCou
     return phi; 
 }
 
-void inst_phi_insertValue(inst_phi_t *phi, ir_context_t *ctx, basic_block_t *block, struct value *value) {
+void inst_phi_insertValue(inst_phi_t *phi, ir_context_t *ctx, basic_block_t *block, value_t *value) {
     // iterate over the uses to make sure we don't have already have the value.
     for (size_t i = 0; i < phi->useCount; i += 2) {
         if (phi->uses[i]->value == &block->value && phi->uses[i + 1]->value == value)
@@ -536,7 +536,7 @@ void _block_successor_read(struct block_successor_it *it) {
     
     it->next = NULL;
     for (; it->i < count; it->i++) {
-        struct value *value = uses[it->i]->value;
+        value_t *value = uses[it->i]->value;
         if (value->type == V_BLOCK) {
             it->next = containerof(value, basic_block_t, value);
             it->i++;

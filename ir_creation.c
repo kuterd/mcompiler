@@ -86,25 +86,25 @@ void _createReg(struct ir_creator *creator, range_t range, enum token_type dataT
     vInfo->dataType = dataType;
 }
 
-struct value* create_value(struct ir_creator *creator, struct ast_node *node);
+value_t* create_value(struct ir_creator *creator, struct ast_node *node);
 
-struct value* create_number(struct ir_creator *creator, struct ast_number *number) { 
+value_t* create_number(struct ir_creator *creator, struct ast_number *number) { 
     return &ir_constant_value(_ ctx, number->num)->value;
 }
 
-struct value* create_value(struct ir_creator *creator, struct ast_node *node);
+value_t* create_value(struct ir_creator *creator, struct ast_node *node);
 
 instruction_t* create_assignment(struct ir_creator *creator, struct ast_binary_exp *exp) {
     struct ast_variable *variable = AST_AS_TYPE(exp->left, variable);
     struct variable *var = _findReg(creator, variable->varName); 
 
-    struct value *val = create_value(creator, exp->right); 
+    value_t *val = create_value(creator, exp->right); 
     inst_assign_var_t *assign = inst_new_assign_var(creator->ctx, var->rId, val);
 
     block_insert(_ block, &assign->inst);
 }
 
-struct value* create_binary(struct ir_creator *creator, struct ast_binary_exp *binary) {
+value_t* create_binary(struct ir_creator *creator, struct ast_binary_exp *binary) {
    enum binary_ops op; 
     switch(binary->op) {
         case TK_PLUS:
@@ -138,8 +138,8 @@ struct value* create_binary(struct ir_creator *creator, struct ast_binary_exp *b
             assert(0 && "Unchandled binary operator");
        //Add all.
     }
-    struct value *left = create_value(creator, binary->left); 
-    struct value *right = create_value(creator, binary->right);
+    value_t *left = create_value(creator, binary->left); 
+    value_t *right = create_value(creator, binary->right);
  
     inst_binary_t *result = inst_new_binary(_ ctx, op, left, right);
 
@@ -154,7 +154,7 @@ instruction_t* create_variable(struct ir_creator *creator, struct ast_variable *
     return &loadVar->inst;
 }
 
-struct value* create_value(struct ir_creator *creator, struct ast_node *node) {
+value_t* create_value(struct ir_creator *creator, struct ast_node *node) {
     //TODO: Handle calls.
     switch(node->type) {
         case BINARY_EXP:
@@ -177,7 +177,7 @@ void create_statement(struct ir_creator *creator, struct ast_node *node) {
         create_assignment(creator, exp); 
     } else if (node->type == IF) {
         struct ast_if *if_node = AST_AS_TYPE(node, if);
-        struct value *cond = create_value(creator, if_node->condition);
+        value_t *cond = create_value(creator, if_node->condition);
         
         basic_block_t *last; 
         basic_block_t *bblock = create_block(creator, AST_AS_TYPE(if_node->ifBlock, block), &last);

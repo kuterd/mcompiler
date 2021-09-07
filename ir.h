@@ -61,25 +61,25 @@ enum value_type {
 };
 
 // Anything that has a value.
-struct value {
+typedef struct {
     enum data_type dataType;
     enum value_type type;
 
     struct list_head uses; 
     range_t name;
-};
+} value_t;
 
 // Argument of a function.
-struct value_argument {
+typedef struct {
     // Inherit from value.
-    struct value value; 
-};
+    value_t value; 
+} value_argument_t;
 
 // A block, can only contain a jump at the end
 typedef struct {
     // We consider basic block a value.
     // NOTE: Should this be a pointer too ? 
-    struct value value;
+    value_t value;
 
     // linked list of instructions.
     struct list_head instructions;
@@ -90,7 +90,7 @@ typedef struct {
 
 struct function {
     // Function is a UNKNOWN_CONST PTR
-    struct value value;
+    value_t value;
     basic_block_t *entry;
     struct list_head functions;
     enum data_type returnType;
@@ -102,14 +102,14 @@ struct instruction;
 typedef struct instruction instruction_t;
 
 // A constant value.
-struct value_constant {
-    struct value value;
+typedef struct {
+    value_t value;
 
     //FIXME: fix this when we add other sizes.
     union {    
         int64_t number;
     };
-};
+} value_constant_t;
 
 #define COMMA_SECOND(a, b) a,
 enum instruction_type {
@@ -121,13 +121,13 @@ enum instruction_type {
 // a value can have mulitple users.
 typedef struct {
     instruction_t *inst; 
-    struct value *value;
+    value_t *value;
     struct list_head useList;
 } use_t;
 
 // A general instruction, lives inside a basic block.
 struct instruction {
-    struct value value;
+    value_t value;
     struct list_head inst_list; 
     enum instruction_type type;
      
@@ -232,13 +232,13 @@ struct ir_print_annotations {
 };
 
 // set the name of the value. doesn't take ownership, creates a copy. 
-void value_setName(ir_context_t *ctx, struct value *value, range_t name);
+void value_setName(ir_context_t *ctx, value_t *value, range_t name);
 
 // get the name of the value, this will assign a name if needed.
-range_t value_getName(ir_context_t *ctx, struct value *value);
+range_t value_getName(ir_context_t *ctx, value_t *value);
 
 // replace all uses of a value with another value.
-void value_replaceAllUses(struct value *value, struct value *replacement);
+void value_replaceAllUses(value_t *value, value_t *replacement);
 
 // dump a function.
 void function_dump(ir_context_t *ctx, function_t *fun, struct ir_print_annotations *annotations);
@@ -261,16 +261,16 @@ void ir_context_free(ir_context_t *context);
 inst_load_var_t* inst_new_load_var(ir_context_t *ctx, size_t i, enum data_type type);
 
 // Create a assign instruction (only valid before ssa conversion 
-inst_assign_var_t* inst_new_assign_var(ir_context_t *ctx, size_t i, struct value *value); 
+inst_assign_var_t* inst_new_assign_var(ir_context_t *ctx, size_t i, value_t *value); 
 
 // Create a binary op instruction.
-inst_binary_t* inst_new_binary(ir_context_t *ctx, enum binary_ops type, struct value *a, struct value *b); 
+inst_binary_t* inst_new_binary(ir_context_t *ctx, enum binary_ops type, value_t *a, value_t *b); 
 
 // Create a jump instruction
 inst_jump_t* inst_new_jump(ir_context_t *ctx, basic_block_t *block); 
 
 // Create a conditional jump instruction.
-inst_jump_cond_t* inst_new_jump_cond(ir_context_t *ctx, basic_block_t *a, basic_block_t *b, struct value *cond);
+inst_jump_cond_t* inst_new_jump_cond(ir_context_t *ctx, basic_block_t *a, basic_block_t *b, value_t *cond);
 
 // Create a new return instruction
 // FIXME: Missing return value.
@@ -281,14 +281,14 @@ inst_phi_t* inst_new_phi(ir_context_t *ctx, enum data_type type, size_t valueCou
 
 // Insert a new value to the phi instruction.
 
-void inst_phi_insertValue(inst_phi_t *phi, ir_context_t *ctx, basic_block_t *block, struct value *value);
+void inst_phi_insertValue(inst_phi_t *phi, ir_context_t *ctx, basic_block_t *block, value_t *value);
 
 // Create a new function.
 // FIXME: Missing return value.
 function_t* ir_new_function(ir_context_t *context, range_t name);
 
 // Set a use of the instruction.
-void inst_setUse(ir_context_t *ctx, instruction_t *inst, size_t useOffset, struct value *value);
+void inst_setUse(ir_context_t *ctx, instruction_t *inst, size_t useOffset, value_t *value);
 
 // Insert a instruction after the inst.
 void inst_insertAfter(instruction_t *inst, instruction_t *add);
@@ -309,7 +309,7 @@ void block_insert(basic_block_t *block, instruction_t *inst);
 use_t** inst_getUses(instruction_t *inst, size_t *count);
 
 // Create a new constant value.
-struct value_constant* ir_constant_value(ir_context_t *ctx, int64_t value);
+value_constant_t* ir_constant_value(ir_context_t *ctx, int64_t value);
 
 /// ---- Iterators ----
 

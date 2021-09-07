@@ -94,7 +94,7 @@ struct reg_block_info* _getOrCreateRegInfo(struct block_info *blockInfo, dbuffer
 }
 
 // Get the last value that was assigned to this reg.
-struct value* _getLastValueUnsafe(hashmap_t *variableMap, size_t vId) {
+value_t* _getLastValueUnsafe(hashmap_t *variableMap, size_t vId) {
     struct hm_bucket_entry *entry = hashmap_getInt(variableMap, vId);
     if (!entry)
         return NULL;
@@ -102,17 +102,17 @@ struct value* _getLastValueUnsafe(hashmap_t *variableMap, size_t vId) {
     struct reg_info *rInfo = containerof(entry, struct reg_info, bucket); 
     if (rInfo->valueStack.usage == 0)
         return NULL; 
-    return (struct value*)dbuffer_getLastPtr(&rInfo->valueStack); 
+    return (value_t*)dbuffer_getLastPtr(&rInfo->valueStack); 
 }
 
-struct value* _getLastValue(hashmap_t *variableMap, size_t vId) {
-    struct value *result = _getLastValueUnsafe(variableMap, vId);
+value_t* _getLastValue(hashmap_t *variableMap, size_t vId) {
+    value_t *result = _getLastValueUnsafe(variableMap, vId);
     assert(result && "Value not found, maybe a load before store ?");
     return result;
 }
 
 // push a value to the reg stack.
-void _pushValue(hashmap_t *variableMap, size_t vId, struct value *value) {
+void _pushValue(hashmap_t *variableMap, size_t vId, value_t *value) {
     struct hm_bucket_entry *entry = hashmap_getInt(variableMap, vId);
     assert(entry != NULL && "Invalid push"); 
     
@@ -165,7 +165,7 @@ void ssa_rename(ir_context_t *ctx, struct block_info *bInfoArray,
         instruction_t *inst = loadAssignArray[i];
         if (inst->type == INST_LOAD_VAR) {
             inst_load_var_t *load = containerof(inst, inst_load_var_t, inst);
-            struct value *lastValue = _getLastValue(variableMap, load->rId); 
+            value_t *lastValue = _getLastValue(variableMap, load->rId); 
             value_replaceAllUses(&load->inst.value, lastValue);
             inst_remove(&load->inst);
         } else if (inst->type == INST_ASSIGN_VAR) {
@@ -190,7 +190,7 @@ void ssa_rename(ir_context_t *ctx, struct block_info *bInfoArray,
         // Iterate over phi instructions of this block.
         for (size_t i = 0; i < phiCount; i++) {
             struct phi_info *phiInfo = phiArray[i];
-            struct value *lastValue = _getLastValueUnsafe(variableMap, phiInfo->rId); 
+            value_t *lastValue = _getLastValueUnsafe(variableMap, phiInfo->rId); 
             if (!lastValue)
                 continue;
             inst_phi_insertValue(phiInfo->phiInst, ctx, current, lastValue); 
@@ -358,7 +358,7 @@ void ssa_convert(ir_context_t *ctx, function_t *fun,
         void **worklistArray = dbuffer_asPtrArray(&worklist, &worklistSize);
         
         for (size_t iW = 0; iW < worklistSize; iW += 2) {
-            struct value *value = (struct value*)worklistArray[iW];
+            value_t *value = (value_t*)worklistArray[iW];
             basic_block_t *block = (basic_block_t*)worklistArray[iW + 1]; 
 
             size_t dfCount; 

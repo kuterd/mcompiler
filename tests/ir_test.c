@@ -4,7 +4,7 @@
 basic_block_t* generate_testBlock(ir_context_t *ctx, function_t *fn, int i) {
     basic_block_t *bb = block_new(ctx, fn);
     
-    struct value_constant *con = ir_constant_value(ctx, i);
+    value_constant_t *con = ir_constant_value(ctx, i);
     inst_assign_var_t *var = inst_new_assign_var(ctx, 1, &con->value);
     block_insert(bb, &var->inst);
 
@@ -19,13 +19,13 @@ void test_dumpDot() {
     basic_block_t *bb = block_new(&ctx, fun);
     fun->entry = bb;
 
-    struct value_constant *con = ir_constant_value(&ctx, 10);
+    value_constant_t *con = ir_constant_value(&ctx, 10);
     inst_assign_var_t *var = inst_new_assign_var(&ctx, 1, &con->value);
     inst_load_var_t *load = inst_new_load_var(&ctx, 1, INT64);
     value_setName(&ctx, &load->inst.value, RANGE_STRING("loaded_value"));
 
-    //struct value_constant *a = ir_constant_value(&ctx, 15);
-    struct value_constant *b = ir_constant_value(&ctx, 20);
+    //value_constant_t *a = ir_constant_value(&ctx, 15);
+    value_constant_t *b = ir_constant_value(&ctx, 20);
 
     inst_binary_t *add = inst_new_binary(&ctx, BO_ADD, &load->inst.value, &b->value);
 
@@ -54,8 +54,8 @@ void test_replace() {
     basic_block_t *block = block_new(&ctx, fun);  
     fun->entry = block;
    
-    struct value *v1 = &ir_constant_value(&ctx, 123)->value;
-    struct value *v2 = &ir_constant_value(&ctx, 321)->value; 
+    value_t *v1 = &ir_constant_value(&ctx, 123)->value;
+    value_t *v2 = &ir_constant_value(&ctx, 321)->value; 
 
     inst_assign_var_t *assign = inst_new_assign_var(&ctx, 1, v1);
     assert(assign->uses[0]->value == v1); 

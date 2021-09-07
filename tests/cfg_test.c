@@ -40,7 +40,7 @@ int main(int argc, char *args[]) {
     basic_block_t *b = block_new(&ctx, fun);
     b->value.name = RANGE_STRING("b"); 
     
-    struct value_constant *cnst = ir_constant_value(&ctx, 1); 
+    value_constant_t *cnst = ir_constant_value(&ctx, 1); 
 
 
     inst_jump_cond_t *cond = inst_new_jump_cond(&ctx, a, b, &cnst->value);

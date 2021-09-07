@@ -119,11 +119,11 @@ enum instruction_type {
 
 // This is the edge between a instruction and a value.
 // a value can have mulitple users.
-struct use {
+typedef struct {
     instruction_t *inst; 
     struct value *value;
     struct list_head useList;
-};
+} use_t;
 
 // A general instruction, lives inside a basic block.
 struct instruction {
@@ -144,7 +144,7 @@ struct inst_phi {
     size_t useCount;
 
     // always in pairs of block and value.
-    struct use **uses;
+    use_t **uses;
 
     struct list_head specialList; 
 };
@@ -167,10 +167,10 @@ struct inst_binary {
     instruction_t inst;
     enum binary_ops op;
     union {
-        struct use *uses[2];
+        use_t *uses[2];
         struct {
-            struct use *left;
-            struct use *right;
+            use_t *left;
+            use_t *right;
         };
     };
 };
@@ -179,7 +179,7 @@ struct inst_binary {
 struct inst_load_var {
     instruction_t inst;
     size_t rId;
-    struct use *uses[0];
+    use_t *uses[0];
 };
 
 // An assign instruction, only valid before SSA conversion.
@@ -188,8 +188,8 @@ struct inst_assign_var {
     size_t rId;
     
     union {
-       struct use *uses[1];
-       struct use *var;
+       use_t *uses[1];
+       use_t *var;
     };
 };
 
@@ -200,26 +200,26 @@ struct inst_function_call {
     // A function call have variable number of uses,
     // this is needed for passing arguments.
     size_t useCount;
-    struct use **uses;
+    use_t **uses;
 };
 
 // A jump instruction, jumps to a basic block.
 struct inst_jump {
     instruction_t inst;
-    struct use *uses[1];
+    use_t *uses[1];
 };
 
 // A conditional jump instruction, jumps to basic block conditionally.
 struct inst_jump_cond {
     instruction_t inst;
-    struct use *uses[3];
+    use_t *uses[3];
 };
 
 // A return instruction.
 struct inst_return {
     instruction_t inst;
     size_t hasReturn;
-    struct use *uses[1];
+    use_t *uses[1];
 };
 
 struct dominators;
@@ -306,7 +306,7 @@ void block_insertTop(basic_block_t *block, instruction_t *inst);
 void block_insert(basic_block_t *block, instruction_t *inst);
 
 // Get the uses for a instruction.
-struct use** inst_getUses(instruction_t *inst, size_t *count);
+use_t** inst_getUses(instruction_t *inst, size_t *count);
 
 // Create a new constant value.
 struct value_constant* ir_constant_value(struct ir_context *ctx, int64_t value);

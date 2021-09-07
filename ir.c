@@ -57,13 +57,13 @@ struct value_constant* ir_constant_value(struct ir_context *ctx, int64_t value) 
 
 void inst_setUse(struct ir_context *ctx, instruction_t *inst, size_t useOffset, struct value *value) {
     size_t useCount = 0;
-    struct use **uses = inst_getUses(inst, &useCount); 
+    use_t **uses = inst_getUses(inst, &useCount); 
     
     assert(useOffset < useCount && "invalid use"); 
-    struct use *use = uses[useOffset];
+    use_t *use = uses[useOffset];
     //NOTE: Maybe not store uses as a 
     if (use == NULL)
-        use = znnew(&ctx->alloc, struct use);
+        use = znnew(&ctx->alloc, use_t);
     else
         // if there is a use already, remove it from the value list.
         list_deattach(&use->useList); 
@@ -132,7 +132,7 @@ void value_setName(struct ir_context *ctx, struct value *value, range_t name) {
 void value_replaceAllUses(struct value *value, struct value *replacement) {
     for (struct list_head *current = value->uses.next, *next;
              current != &value->uses; current = next) {
-        struct use *use = containerof(current, struct use, useList);
+        use_t *use = containerof(current, use_t, useList);
         next = use->useList.next; 
         
         // remove the use from the old value's use list.
@@ -319,7 +319,7 @@ void inst_dumpd(struct ir_context *ctx, instruction_t *inst, dbuffer_t *dbuffer,
 
     // Uses
     size_t count = 0;
-    struct use **uses = inst_getUses(inst, &count);
+    use_t **uses = inst_getUses(inst, &count);
 
     for (int i = 0; i < count; i++) {
         struct value *value = uses[i]->value;
@@ -438,7 +438,7 @@ struct inst_phi* inst_new_phi(struct ir_context *ctx, enum data_type type, size_
     size_t useReserve = max(valueCount, 8) * 2;
     dbuffer_initSize(&phi->useBuffer, sizeof(void*) * useReserve); 
     phi->useCount = valueCount * 2;
-    phi->uses = (struct use**)&phi->useBuffer.buffer;
+    phi->uses = (use_t**)&phi->useBuffer.buffer;
 
     list_add(&ctx->specialInstructions, &phi->specialList);
 
@@ -456,7 +456,7 @@ void inst_phi_insertValue(struct inst_phi *phi, struct ir_context *ctx, basic_bl
     dbuffer_pushPtr(&phi->useBuffer, NULL);
     dbuffer_pushPtr(&phi->useBuffer, NULL);
 
-    phi->uses = (struct use**)phi->useBuffer.buffer;
+    phi->uses = (use_t**)phi->useBuffer.buffer;
     phi->useCount += 2;
 
     // set the uses for the values.
@@ -499,7 +499,7 @@ void ir_addFunction(struct ir_context *context, function_t *function) {
 } 
 */
 
-struct use** inst_getUses(instruction_t *inst, size_t *count) {
+use_t** inst_getUses(instruction_t *inst, size_t *count) {
     switch(inst->type) {
         INST_CONSTANT_USE(GEN_INST_CONSTANT_USE)
         INST_VARIABLE_USE(GEN_INST_VARIABLE_USE)
@@ -524,7 +524,7 @@ struct block_predecessor_it block_predecessor_next(struct block_predecessor_it i
 
 basic_block_t* block_predecessor_get(struct block_predecessor_it it) {
     assert(!block_predecessor_end(it) && "invalid iterator");
-    struct use *u = containerof(it.current, struct use, useList);
+    use_t *u = containerof(it.current, use_t, useList);
     return u->inst->parent;
 }
 
@@ -532,7 +532,7 @@ void _block_successor_read(struct block_successor_it *it) {
     if (!it->inst)
         return;
     size_t count = 0;
-    struct use **uses = inst_getUses(it->inst, &count);
+    use_t **uses = inst_getUses(it->inst, &count);
     
     it->next = NULL;
     for (; it->i < count; it->i++) {

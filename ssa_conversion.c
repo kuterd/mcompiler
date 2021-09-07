@@ -65,7 +65,7 @@ struct reg_block_info {
     struct hm_bucket_entry bucket;
 };
 
-struct phi_info* block_info_getOrCreatePhi(struct block_info *bInfo, struct basic_block *block, struct ir_context *ctx, zone_allocator *alloc, size_t rId, enum data_type type) {
+struct phi_info* block_info_getOrCreatePhi(struct block_info *bInfo, basic_block_t *block, struct ir_context *ctx, zone_allocator *alloc, size_t rId, enum data_type type) {
     struct hm_bucket_entry *entry = hashmap_getInt(&bInfo->phiMap, rId);   
     if (entry)
         return containerof(entry, struct phi_info, bucket);
@@ -138,7 +138,7 @@ void _popValue(hashmap_t *variableMap, size_t vId) {
 // We visit blocks in DFS, push assignments to the stack.
 // we have to cleanup the stack before returning to the predecessor. 
 void ssa_rename(struct ir_context *ctx, struct block_info *bInfoArray,
-                     hashmap_t *variableMap, struct dominators *doms, struct basic_block *current) {
+                     hashmap_t *variableMap, struct dominators *doms, basic_block_t *current) {
     // get the block number based on post order number.
     size_t number = dominators_getNumber(doms, current);
     struct block_info *bInfo = &bInfoArray[number];
@@ -181,7 +181,7 @@ void ssa_rename(struct ir_context *ctx, struct block_info *bInfoArray,
     // Push values to phi instructions of successor blocks.
     for (struct block_successor_it it = block_successor_begin(current); 
         !block_successor_end(it); it = block_successor_next(it)) { 
-        struct basic_block *sblock = block_successor_get(it);
+        basic_block_t *sblock = block_successor_get(it);
         size_t bNumber = dominators_getNumber(doms, sblock);
         struct block_info *SbInfo = &bInfoArray[bNumber];
        
@@ -202,7 +202,7 @@ void ssa_rename(struct ir_context *ctx, struct block_info *bInfoArray,
     // Visit dominated blocks.
     for (struct dominator_child_it it = dominator_child_begin(doms, current); 
         !dominator_child_end(it); it = dominator_child_next(it)) {
-        struct basic_block *block = dominator_child_get(it); 
+        basic_block_t *block = dominator_child_get(it); 
         // Rename dominated block.
         ssa_rename(ctx, bInfoArray, variableMap, doms, block); 
     }
@@ -242,7 +242,7 @@ void ssa_convert(struct ir_context *ctx, struct function *fun,
     //  ---- Step 1 : init block info and analyze the blocks. ----
     for (size_t i = 0; i < doms->elementCount; i++) {
         // ---  Initialize block info. --- 
-        struct basic_block *block = doms->postorder[i]; 
+        basic_block_t *block = doms->postorder[i]; 
         struct block_info *bInfo = &blockInfo[i]; 
         bInfo->isRenamed = 0;
         hashmap_init(&bInfo->regMap, intKeyType); 
@@ -348,7 +348,7 @@ void ssa_convert(struct ir_context *ctx, struct function *fun,
         // go over the assignmensts.
         for (size_t iA = 0; iA < assignCount; iA++) {
             struct inst_assign_var *assign = assigns[iA];
-            struct basic_block *block = assign->inst.parent;
+            basic_block_t *block = assign->inst.parent;
             size_t bId = dominators_getNumber(doms, block); 
             lastIteration[bId] = i;           
             dbuffer_pushPtr(&worklist, assign->var->value);
@@ -360,13 +360,13 @@ void ssa_convert(struct ir_context *ctx, struct function *fun,
         
         for (size_t iW = 0; iW < worklistSize; iW += 2) {
             struct value *value = (struct value*)worklistArray[iW];
-            struct basic_block *block = (struct basic_block*)worklistArray[iW + 1]; 
+            basic_block_t *block = (basic_block_t*)worklistArray[iW + 1]; 
 
             size_t dfCount; 
-            struct basic_block **dfArray = domfrontiers_get(df, block, &dfCount);
+            basic_block_t **dfArray = domfrontiers_get(df, block, &dfCount);
             // iterate over dominance frontiers. 
             for (size_t iDf = 0; iDf < dfCount; iDf++) {
-                struct basic_block *dfBlock = dfArray[iDf]; 
+                basic_block_t *dfBlock = dfArray[iDf]; 
                 size_t bId = dominators_getNumber(doms, dfBlock); 
                 struct block_info *bInfo = &blockInfo[bId];
     

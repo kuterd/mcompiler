@@ -1,8 +1,8 @@
 #include "ir.h"
 #include <assert.h>
 
-struct basic_block* generate_testBlock(struct ir_context *ctx, struct function *fn, int i) {
-    struct basic_block *bb = block_new(ctx, fn);
+basic_block_t* generate_testBlock(struct ir_context *ctx, struct function *fn, int i) {
+    basic_block_t *bb = block_new(ctx, fn);
     
     struct value_constant *con = ir_constant_value(ctx, i);
     struct inst_assign_var *var = inst_new_assign_var(ctx, 1, &con->value);
@@ -16,7 +16,7 @@ void test_dumpDot() {
     ir_context_init(&ctx); 
 
     struct function *fun = ir_new_function(&ctx, RANGE_STRING("test"));
-    struct basic_block *bb = block_new(&ctx, fun);
+    basic_block_t *bb = block_new(&ctx, fun);
     fun->entry = bb;
 
     struct value_constant *con = ir_constant_value(&ctx, 10);
@@ -29,8 +29,8 @@ void test_dumpDot() {
 
     struct inst_binary *add = inst_new_binary(&ctx, BO_ADD, &load->inst.value, &b->value);
 
-    struct basic_block *b1 = generate_testBlock(&ctx, fun, 13);
-    struct basic_block *b2 = generate_testBlock(&ctx, fun, 10);
+    basic_block_t *b1 = generate_testBlock(&ctx, fun, 13);
+    basic_block_t *b2 = generate_testBlock(&ctx, fun, 10);
   
     struct inst_jump *jumpTop = inst_new_jump(&ctx, bb);
     block_insert(b1, &jumpTop->inst);
@@ -51,7 +51,7 @@ void test_replace() {
     ir_context_init(&ctx);
     
     struct function *fun = ir_new_function(&ctx, RANGE_STRING("test"));
-    struct basic_block *block = block_new(&ctx, fun);  
+    basic_block_t *block = block_new(&ctx, fun);  
     fun->entry = block;
    
     struct value *v1 = &ir_constant_value(&ctx, 123)->value;

@@ -35,7 +35,7 @@ int main() {
     ir_creator_init(&creator, &ctx);    
     struct function *function = 
         ir_creator_createFunction(&creator, AST_AS_TYPE(node, function));     
-    struct basic_block *block = function->entry;
+    basic_block_t *block = function->entry;
  
     function_dumpDot(&ctx, function, NULL);
 

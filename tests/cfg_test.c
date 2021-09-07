@@ -3,20 +3,20 @@
 #include "format.h"
 #include <stdio.h>
 /*
-struct basic_block* create_test_block(struct ir_, fncontext *ctx, struct function *fn, struct basic_block *prev) {
-    struct basic_block *block = block_new(ctx, fn);
+basic_block_t* create_test_block(struct ir_, fncontext *ctx, struct function *fn, basic_block_t *prev) {
+    basic_block_t *block = block_new(ctx, fn);
     struct inst_jump *jmp = inst_new_jump(ctx, block);
     block_insert(prev, &jmp->inst);
 }
 */
-struct basic_block* create_test_cfg(struct ir_context *ctx, struct function *fn) {
+basic_block_t* create_test_cfg(struct ir_context *ctx, struct function *fn) {
     int i = 0;
-    struct basic_block *prev = block_new(ctx, fn);
+    basic_block_t *prev = block_new(ctx, fn);
     prev->value.name = format_range("{int}", i + 1);
     
-    struct basic_block *result = prev;
+    basic_block_t *result = prev;
     for (i = 1; i < 5; i++) {
-        struct basic_block *nblock = block_new(ctx, fn); 
+        basic_block_t *nblock = block_new(ctx, fn); 
         nblock->value.name = format_range("{int}", i + 1);
  
         struct inst_jump *jmp = inst_new_jump(ctx, nblock);
@@ -33,11 +33,11 @@ int main(int argc, char *args[]) {
     
     struct function *fun = ir_new_function(&ctx, RANGE_STRING("test"));
     
-    struct basic_block *entry = block_new(&ctx, fun);
+    basic_block_t *entry = block_new(&ctx, fun);
     entry->value.name = RANGE_STRING("entry"); 
-    struct basic_block *a = block_new(&ctx, fun);
+    basic_block_t *a = block_new(&ctx, fun);
     a->value.name = RANGE_STRING("a"); 
-    struct basic_block *b = block_new(&ctx, fun);
+    basic_block_t *b = block_new(&ctx, fun);
     b->value.name = RANGE_STRING("b"); 
     
     struct value_constant *cnst = ir_constant_value(&ctx, 1); 

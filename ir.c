@@ -2,7 +2,10 @@
 #include "format.h"
 #include "buffer.h"
 #include "dot_builder.h"
+#include "dominators.h"
 
+
+// Note we should probably move this to a macro.
 char *kBinaryOpNames[] = {
     "add",
     "sub",
@@ -81,20 +84,20 @@ void inst_remove(struct instruction *inst) {
 }
 
 
-struct basic_block* block_new(struct ir_context *ctx, struct function *fn) {
-    struct basic_block* block = znnew(&ctx->alloc, struct basic_block);
+basic_block_t* block_new(struct ir_context *ctx, struct function *fn) {
+    basic_block_t* block = znnew(&ctx->alloc, basic_block_t);
     block->parent = fn;
     _value_init(&block->value, V_BLOCK, DT_BLOCK);
     LIST_INIT(&block->instructions);
 }
 
-void block_dump(struct ir_context *ctx, struct basic_block *block, dbuffer_t *dbuffer,
+void block_dump(struct ir_context *ctx, basic_block_t *block, dbuffer_t *dbuffer,
                 int dot, struct ir_print_annotations *annotations);
 
 
 struct function* value_getFunction(struct value *value) {
     if (value->type == V_BLOCK) {
-        struct basic_block *block = containerof(value, struct basic_block, value);
+        basic_block_t *block = containerof(value, basic_block_t, value);
         return block->parent;
     } else if (value->type == INST) {
         struct instruction *inst = containerof(value, struct instruction, value);
@@ -155,7 +158,7 @@ void function_dump(struct ir_context *ctx, struct function *fun, struct ir_print
            
     while (toVisit.usage != 0) {
         for (size_t i = 0; i < toVisit.usage / sizeof(void*); i++) {
-            struct basic_block *block = ((struct basic_block**)toVisit.buffer)[i];
+            basic_block_t *block = ((basic_block_t**)toVisit.buffer)[i];
             // Skip if we already visited this block
             if (hashset_existsPtr(&visited, block))
                 continue;
@@ -167,7 +170,7 @@ void function_dump(struct ir_context *ctx, struct function *fun, struct ir_print
 
             struct block_successor_it it = block_successor_begin(block); 
             for (; !block_successor_end(it); it = block_successor_next(it)) {
-                struct basic_block *succ = block_successor_get(it);
+                basic_block_t *succ = block_successor_get(it);
                 dbuffer_pushPtr(&newVisit, succ); 
             }
         }
@@ -202,7 +205,7 @@ void function_dumpDot(struct ir_context *ctx, struct function *fun, struct ir_pr
 
     while (toVisit.usage != 0) {
         for (size_t i = 0; i < toVisit.usage / sizeof(void*); i++) {
-            struct basic_block *block = ((struct basic_block**)toVisit.buffer)[i];
+            basic_block_t *block = ((basic_block_t**)toVisit.buffer)[i];
             // Skip if we already visited this block
             if (hashset_existsPtr(&visited, block))
                 continue;
@@ -219,7 +222,7 @@ void function_dumpDot(struct ir_context *ctx, struct function *fun, struct ir_pr
 
             struct block_successor_it it = block_successor_begin(block); 
             for (; !block_successor_end(it); it = block_successor_next(it)) {
-                struct basic_block *succ = block_successor_get(it);
+                basic_block_t *succ = block_successor_get(it);
                 char childId[MAX_NODE_ID];
                 getNodeId(succ, childId);
                 graph_addEdge(&graph, nodeId, childId); 
@@ -255,7 +258,7 @@ void inst_dump(struct ir_context *ctx, struct instruction *inst) {
 // We need to have a hack for proper dot formatting.
 #define _B_NEW_LINE dbuffer_pushStr(dbuffer, dot ? "\\l" : "\n") 
 
-void block_dump(struct ir_context *ctx, struct basic_block *block, dbuffer_t *dbuffer,
+void block_dump(struct ir_context *ctx, basic_block_t *block, dbuffer_t *dbuffer,
                 int dot, struct ir_print_annotations *annotations) {
     range_t bName = value_getName(ctx, &block->value); 
     
@@ -264,7 +267,7 @@ void block_dump(struct ir_context *ctx, struct basic_block *block, dbuffer_t *db
     
     // Print the dominator information, if we have it. 
     if (annotations && annotations->doms) {
-        struct basic_block *dominator = dominators_getIDom(annotations->doms, block);
+        basic_block_t *dominator = dominators_getIDom(annotations->doms, block);
         range_t dominatorName = value_getName(ctx, &dominator->value); 
  
         format_dbuffer("// idom[{range}] = {range}", dbuffer, bName, dominatorName);
@@ -274,10 +277,10 @@ void block_dump(struct ir_context *ctx, struct basic_block *block, dbuffer_t *db
     // Print the dominance frontiers information, if we have it.
     if (annotations && annotations->df) {
         size_t size = 0;
-        struct basic_block **dfList = domfrontiers_get(annotations->df, block, &size);
+        basic_block_t **dfList = domfrontiers_get(annotations->df, block, &size);
         format_dbuffer("// df[{range}] = [", dbuffer, bName);
         for (size_t i = 0; i < size; i++) {
-            struct basic_block *df = dfList[i];
+            basic_block_t *df = dfList[i];
             range_t dfName = value_getName(ctx , &df->value); 
             format_dbuffer("{range}", dbuffer, dfName);
             if (i != size - 1)
@@ -344,17 +347,17 @@ void inst_dumpd(struct ir_context *ctx, struct instruction *inst, dbuffer_t *dbu
 
 
 // Insert a instruction at the top.
-void block_insertTop(struct basic_block *block, struct instruction *inst) {
+void block_insertTop(basic_block_t *block, struct instruction *inst) {
     list_addAfter(&block->instructions, &inst->inst_list);
     inst->parent = block;
 }
 
-void block_insert(struct basic_block *block, struct instruction *add) {
+void block_insert(basic_block_t *block, struct instruction *add) {
    add->parent = block; 
    list_add(&block->instructions, &add->inst_list);
 } 
 
-struct instruction* block_lastInstruction(struct basic_block *block) {
+struct instruction* block_lastInstruction(basic_block_t *block) {
     if (list_empty(&block->instructions))
         return NULL;
     return containerof(block->instructions.prev, struct instruction, inst_list);
@@ -408,13 +411,13 @@ struct inst_binary* inst_new_binary(struct ir_context *ctx, enum binary_ops type
     return bin;
 }
 
-struct inst_jump* inst_new_jump(struct ir_context *ctx, struct basic_block *block) {
+struct inst_jump* inst_new_jump(struct ir_context *ctx, basic_block_t *block) {
     struct inst_jump *jump = _inst_new_jump(ctx, VOID);
     inst_setUse(ctx, &jump->inst, 0, &block->value);
     return jump;
 }
 
-struct inst_jump_cond* inst_new_jump_cond(struct ir_context *ctx, struct basic_block *a, struct basic_block *b, struct value *cond) {
+struct inst_jump_cond* inst_new_jump_cond(struct ir_context *ctx, basic_block_t *a, basic_block_t *b, struct value *cond) {
     struct inst_jump_cond *jump = _inst_new_jump_cond(ctx, VOID);
     inst_setUse(ctx, &jump->inst, 0, &a->value);
     inst_setUse(ctx, &jump->inst, 1, &b->value);
@@ -442,7 +445,7 @@ struct inst_phi* inst_new_phi(struct ir_context *ctx, enum data_type type, size_
     return phi; 
 }
 
-void inst_phi_insertValue(struct inst_phi *phi, struct ir_context *ctx, struct basic_block *block, struct value *value) {
+void inst_phi_insertValue(struct inst_phi *phi, struct ir_context *ctx, basic_block_t *block, struct value *value) {
     // iterate over the uses to make sure we don't have already have the value.
     for (size_t i = 0; i < phi->useCount; i += 2) {
         if (phi->uses[i]->value == &block->value && phi->uses[i + 1]->value == value)
@@ -505,7 +508,7 @@ struct use** inst_getUses(struct instruction *inst, size_t *count) {
 
 // ---- Iterators ---- 
 
-struct block_predecessor_it block_predecessor_begin(struct basic_block *block) {
+struct block_predecessor_it block_predecessor_begin(basic_block_t *block) {
     return (struct block_predecessor_it) {.list = &block->value.uses, .current = block->value.uses.next}; 
 }
 
@@ -519,7 +522,7 @@ struct block_predecessor_it block_predecessor_next(struct block_predecessor_it i
     return it;
 }
 
-struct basic_block* block_predecessor_get(struct block_predecessor_it it) {
+basic_block_t* block_predecessor_get(struct block_predecessor_it it) {
     assert(!block_predecessor_end(it) && "invalid iterator");
     struct use *u = containerof(it.current, struct use, useList);
     return u->inst->parent;
@@ -535,14 +538,14 @@ void _block_successor_read(struct block_successor_it *it) {
     for (; it->i < count; it->i++) {
         struct value *value = uses[it->i]->value;
         if (value->type == V_BLOCK) {
-            it->next = containerof(value, struct basic_block, value);
+            it->next = containerof(value, basic_block_t, value);
             it->i++;
             return;
         }    
     }
 }
 
-struct block_successor_it block_successor_begin(struct basic_block *block) {
+struct block_successor_it block_successor_begin(basic_block_t *block) {
     struct instruction *inst = block_lastInstruction(block);
     
     // Tecnically, blocks should end either with a return or with a jump.
@@ -568,7 +571,7 @@ struct block_successor_it block_successor_next(struct block_successor_it it) {
     return it;
 }
 
-struct basic_block* block_successor_get(struct block_successor_it it) {
+basic_block_t* block_successor_get(struct block_successor_it it) {
     assert(!block_successor_end(it) && "invalid iterator");
     return it.next; 
 }

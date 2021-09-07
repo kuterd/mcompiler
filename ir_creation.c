@@ -42,7 +42,7 @@ void ir_creator_init(struct ir_creator *creator, struct ir_context *ctx) {
     _ ctx = ctx;
 }
 
-struct basic_block* create_block(struct ir_creator *creator, struct ast_block *block, struct basic_block **last);
+basic_block_t* create_block(struct ir_creator *creator, struct ast_block *block, basic_block_t **last);
 
 struct function* ir_creator_createFunction(struct ir_creator *creator, struct ast_function *func) {
     assert(func->childCount == func->argumentCount + 1 && "Incorrect child count for function");
@@ -179,14 +179,14 @@ void create_statement(struct ir_creator *creator, struct ast_node *node) {
         struct ast_if *if_node = AST_AS_TYPE(node, if);
         struct value *cond = create_value(creator, if_node->condition);
         
-        struct basic_block *last; 
-        struct basic_block *bblock = create_block(creator, AST_AS_TYPE(if_node->ifBlock, block), &last);
+        basic_block_t *last; 
+        basic_block_t *bblock = create_block(creator, AST_AS_TYPE(if_node->ifBlock, block), &last);
 
         // basic_block can only have a jump at the end, so we need to create a new
         // block for the rest of this function.
         // we do not need to create a new block info since the variable scope is the same.
 
-        struct basic_block *rest = block_new(_ ctx, _ function);
+        basic_block_t *rest = block_new(_ ctx, _ function);
         struct inst_jump_cond *cjump = inst_new_jump_cond(_ ctx, bblock, rest, cond);
         
         block_insert(_ block, &cjump->inst); 
@@ -207,15 +207,15 @@ void create_statement(struct ir_creator *creator, struct ast_node *node) {
     } 
 }
 
-struct basic_block* create_block(struct ir_creator *creator, struct ast_block *block, struct basic_block **last) {
+basic_block_t* create_block(struct ir_creator *creator, struct ast_block *block, basic_block_t **last) {
     struct block_info *blockInfo = malloc(sizeof(struct block_info)); 
     hashmap_init(&blockInfo->variableMap,  rangeKeyType);
     blockInfo->parent = _ blockInfo;
     creator->blockInfo = blockInfo;
     zone_init(&blockInfo->zone);
 
-    struct basic_block *bblock = block_new(_ ctx, _ function); 
-    struct basic_block *oldBlock = _ block;
+    basic_block_t *bblock = block_new(_ ctx, _ function); 
+    basic_block_t *oldBlock = _ block;
     _ block = bblock;
 
     // Create statements.

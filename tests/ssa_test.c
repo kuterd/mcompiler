@@ -37,7 +37,7 @@ int main (int argc, char *args[]) {
  
     struct function *function = 
         ir_creator_createFunction(&creator, AST_AS_TYPE(node, function));     
-    struct basic_block *block = function->entry;
+    basic_block_t *block = function->entry;
 
     // --- Covnert to SSA based IR. ---
     struct dominators doms;

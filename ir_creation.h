@@ -9,7 +9,7 @@ struct ir_creator {
     struct function *function;
 
     // Current Block.
-    struct basic_block *block;
+    basic_block_t *block;
     struct block_info *blockInfo;
     struct ir_context *ctx;
 };

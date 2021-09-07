@@ -30,6 +30,10 @@ extern char *kInstNames[];
 // Names of data types.
 extern char *kDataTypeNames[];
 
+// forward decleration for function.
+struct function;
+typedef struct function function_t;
+
 // Data types.
 enum data_type {
     VOID,
@@ -46,8 +50,6 @@ struct ir_context {
     // Special instructions that contain heap objects.
     struct list_head specialInstructions;
 };
-
-#include "dominators.h"
 
 // Type of the value. 
 enum value_type {
@@ -73,18 +75,8 @@ struct value_argument {
     struct value value; 
 };
 
-struct function {
-    // Function is a UNKNOWN_CONST PTR
-    struct value value;
-    struct basic_block *entry;
-    struct list_head functions;
-    enum data_type returnType;
-    size_t argumentCount; 
-    size_t valueNameCounter;
-};
-
 // A block, can only contain a jump at the end
-struct basic_block {
+typedef struct {
     // We consider basic block a value.
     // NOTE: Should this be a pointer too ? 
     struct value value;
@@ -94,6 +86,16 @@ struct basic_block {
     
     // The function that contains this block.
     struct function *parent;
+} basic_block_t;
+
+struct function {
+    // Function is a UNKNOWN_CONST PTR
+    struct value value;
+    basic_block_t *entry;
+    struct list_head functions;
+    enum data_type returnType;
+    size_t argumentCount; 
+    size_t valueNameCounter;
 };
 
 struct instruction;
@@ -128,7 +130,7 @@ struct instruction {
     struct list_head inst_list; 
     enum instruction_type type;
      
-    struct basic_block *parent;
+    basic_block_t *parent;
 };
 
 // A phi instruction, used for the SSA form.
@@ -219,6 +221,9 @@ struct inst_return {
     struct use *uses[1];
 };
 
+struct dominators;
+struct domfrontiers;
+
 // Optional stuff that we can print in the IR.
 struct ir_print_annotations {
     struct dominators *doms;
@@ -243,7 +248,7 @@ void function_dumpDot(struct ir_context *ctx, struct function *fun, struct ir_pr
 // dump a instruction.
 void inst_dump(struct ir_context *ctx, struct instruction *inst);
 
-//void block_dump(struct ir_context *ctx, struct basic_block *block);
+//void block_dump(struct ir_context *ctx, basic_block_t *block);
 
 // initialize the ir context.
 void ir_context_init(struct ir_context *context);
@@ -261,10 +266,10 @@ struct inst_assign_var* inst_new_assign_var(struct ir_context *ctx, size_t i, st
 struct inst_binary* inst_new_binary(struct ir_context *ctx, enum binary_ops type, struct value *a, struct value *b); 
 
 // Create a jump instruction
-struct inst_jump* inst_new_jump(struct ir_context *ctx, struct basic_block *block); 
+struct inst_jump* inst_new_jump(struct ir_context *ctx, basic_block_t *block); 
 
 // Create a conditional jump instruction.
-struct inst_jump_cond* inst_new_jump_cond(struct ir_context *ctx, struct basic_block *a, struct basic_block *b, struct value *cond);
+struct inst_jump_cond* inst_new_jump_cond(struct ir_context *ctx, basic_block_t *a, basic_block_t *b, struct value *cond);
 
 // Create a new return instruction
 // FIXME: Missing return value.
@@ -275,7 +280,7 @@ struct inst_phi* inst_new_phi(struct ir_context *ctx, enum data_type type, size_
 
 // Insert a new value to the phi instruction.
 
-void inst_phi_insertValue(struct inst_phi *phi, struct ir_context *ctx, struct basic_block *block, struct value *value);
+void inst_phi_insertValue(struct inst_phi *phi, struct ir_context *ctx, basic_block_t *block, struct value *value);
 
 // Create a new function.
 // FIXME: Missing return value.
@@ -291,13 +296,13 @@ void inst_insertAfter(struct instruction *inst, struct instruction *add);
 void inst_remove(struct instruction *inst);
 
 // Create a new block
-struct basic_block* block_new(struct ir_context *ctx, struct function *fn);
+basic_block_t* block_new(struct ir_context *ctx, struct function *fn);
 
 // Insert a instruction at the top.
-void block_insertTop(struct basic_block *block, struct instruction *inst);
+void block_insertTop(basic_block_t *block, struct instruction *inst);
 
 // Insert a instruction at the end.
-void block_insert(struct basic_block *block, struct instruction *inst);
+void block_insert(basic_block_t *block, struct instruction *inst);
 
 // Get the uses for a instruction.
 struct use** inst_getUses(struct instruction *inst, size_t *count);
@@ -313,22 +318,22 @@ struct block_predecessor_it {
     struct list_head *current;
 };
 
-struct block_predecessor_it block_predecessor_begin(struct basic_block *block);
+struct block_predecessor_it block_predecessor_begin(basic_block_t *block);
 
 int block_predecessor_end(struct block_predecessor_it it);
 struct block_predecessor_it block_predecessor_next(struct block_predecessor_it it);
-struct basic_block* block_predecessor_get(struct block_predecessor_it it);
+basic_block_t* block_predecessor_get(struct block_predecessor_it it);
 
 // iteartor of blocks that are can be branched from this block. 
 struct block_successor_it {
-    struct basic_block *next;    
+    basic_block_t *next;    
     struct instruction *inst;
     size_t i;
 };
 
 int block_successor_end(struct block_successor_it it);
-struct block_successor_it block_successor_begin(struct basic_block *block);
+struct block_successor_it block_successor_begin(basic_block_t *block);
 struct block_successor_it block_successor_next(struct block_successor_it it);
-struct basic_block* block_successor_get(struct block_successor_it it);
+basic_block_t* block_successor_get(struct block_successor_it it);
 
 #endif

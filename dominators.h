@@ -25,32 +25,32 @@ struct dominators {
     hashmap_t nodeToNum;
     size_t nodeCount;
     // We should try to move this to somewhere else.
-    struct basic_block **postorder;
+    basic_block_t **postorder;
     size_t elementCount;
 
     zone_allocator allocator;
 };
 
 // TODO: We want to eleminate this eventually.
-size_t dominators_getNumber(struct dominators *dom, struct basic_block *block);
+size_t dominators_getNumber(struct dominators *dom, basic_block_t *block);
 
 // get the dom node for this block.
-struct dom_node* dominators_getNode(struct dominators *dom, struct basic_block *block);
+struct dom_node* dominators_getNode(struct dominators *dom, basic_block_t *block);
 
 // Compute the dominators.
-void dominators_compute(struct dominators *doms, struct basic_block *entry);
+void dominators_compute(struct dominators *doms, basic_block_t *entry);
 
 // Free the dominator data. 
 void dominators_free(struct dominators *doms);
 
 // Get the immeidate dominator of the \p block
-struct basic_block* dominators_getIDom(struct dominators *doms, struct basic_block *block);
+basic_block_t* dominators_getIDom(struct dominators *doms, basic_block_t *block);
 
 // Compute the dominator frontiers based on the dominators.
 void domfrontiers_compute(struct domfrontiers *df, struct dominators *doms);
 
 // Get a list of dominance frontiers.
-struct basic_block** domfrontiers_get(struct domfrontiers *df, struct basic_block *block, size_t *size);
+basic_block_t** domfrontiers_get(struct domfrontiers *df, basic_block_t *block, size_t *size);
 
 void dominators_dumpDot(struct dominators *doms, struct ir_context *ctx);
 
@@ -61,7 +61,7 @@ struct dominator_child_it {
 };
 
 // initialize a iterator for children that are dominated by this block.
-struct dominator_child_it dominator_child_begin(struct dominators *doms, struct basic_block *block);
+struct dominator_child_it dominator_child_begin(struct dominators *doms, basic_block_t *block);
 
 // Get the next 
 struct dominator_child_it dominator_child_next(struct dominator_child_it it);
@@ -70,7 +70,7 @@ struct dominator_child_it dominator_child_next(struct dominator_child_it it);
 int dominator_child_end(struct dominator_child_it it);
 
 // Get the block from the dominator.
-struct basic_block* dominator_child_get(struct dominator_child_it it);
+basic_block_t* dominator_child_get(struct dominator_child_it it);
 
 
 #endif

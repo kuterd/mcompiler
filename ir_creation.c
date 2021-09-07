@@ -35,7 +35,7 @@ enum data_type convertDataType(enum token_type type) {
 
 #define _ creator->
 
-void ir_creator_init(struct ir_creator *creator, struct ir_context *ctx) {
+void ir_creator_init(struct ir_creator *creator, ir_context_t *ctx) {
     _ regCount = 0;
     _ block = NULL;
     _ blockInfo = NULL;

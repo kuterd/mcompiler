@@ -31,13 +31,13 @@ char *kInstNames[] = {
 };
 #undef STR_SECOND
 
-void ir_context_init(struct ir_context *context) {
+void ir_context_init(ir_context_t *context) {
     LIST_INIT(&context->functions);
     LIST_INIT(&context->specialInstructions);
     zone_init(&context->alloc);
 }
 
-void ir_context_free(struct ir_context *context) {
+void ir_context_free(ir_context_t *context) {
    zone_free(&context->alloc);
 }
 
@@ -47,7 +47,7 @@ void _value_init(struct value *value, enum value_type type, enum data_type dataT
    value->dataType = dataType;
 }
 
-struct value_constant* ir_constant_value(struct ir_context *ctx, int64_t value) {
+struct value_constant* ir_constant_value(ir_context_t *ctx, int64_t value) {
     //TODO: Constant uniqeing.
    struct value_constant *result = znnew(&ctx->alloc, struct value_constant);
    _value_init(&result->value, CONST, INT64);
@@ -55,7 +55,7 @@ struct value_constant* ir_constant_value(struct ir_context *ctx, int64_t value) 
    return result; 
 }
 
-void inst_setUse(struct ir_context *ctx, instruction_t *inst, size_t useOffset, struct value *value) {
+void inst_setUse(ir_context_t *ctx, instruction_t *inst, size_t useOffset, struct value *value) {
     size_t useCount = 0;
     use_t **uses = inst_getUses(inst, &useCount); 
     
@@ -84,14 +84,14 @@ void inst_remove(instruction_t *inst) {
 }
 
 
-basic_block_t* block_new(struct ir_context *ctx, function_t *fn) {
+basic_block_t* block_new(ir_context_t *ctx, function_t *fn) {
     basic_block_t* block = znnew(&ctx->alloc, basic_block_t);
     block->parent = fn;
     _value_init(&block->value, V_BLOCK, DT_BLOCK);
     LIST_INIT(&block->instructions);
 }
 
-void block_dump(struct ir_context *ctx, basic_block_t *block, dbuffer_t *dbuffer,
+void block_dump(ir_context_t *ctx, basic_block_t *block, dbuffer_t *dbuffer,
                 int dot, struct ir_print_annotations *annotations);
 
 
@@ -107,7 +107,7 @@ function_t* value_getFunction(struct value *value) {
     return NULL;
 }  
 
-range_t value_getName(struct ir_context *ctx, struct value *value) {
+range_t value_getName(ir_context_t *ctx, struct value *value) {
     if (value->name.size != 0)
         return value->name;
     // Generate a name for this value.
@@ -121,7 +121,7 @@ range_t value_getName(struct ir_context *ctx, struct value *value) {
 
 }
 
-void value_setName(struct ir_context *ctx, struct value *value, range_t name) {
+void value_setName(ir_context_t *ctx, struct value *value, range_t name) {
     char *ptr = zone_alloc(&ctx->alloc, name.size);
     memcpy(ptr, name.ptr, name.size);  
     value->name.size = name.size;
@@ -142,7 +142,7 @@ void value_replaceAllUses(struct value *value, struct value *replacement) {
     };
 }
 
-void function_dump(struct ir_context *ctx, function_t *fun, struct ir_print_annotations *annotations) {
+void function_dump(ir_context_t *ctx, function_t *fun, struct ir_print_annotations *annotations) {
     printf("%s function %.*s\n", kDataTypeNames[fun->returnType],
             fun->value.name.size, fun->value.name.ptr);
     hashset_t visited;
@@ -186,7 +186,7 @@ void function_dump(struct ir_context *ctx, function_t *fun, struct ir_print_anno
     hashset_free(&visited);
 }
 
-void function_dumpDot(struct ir_context *ctx, function_t *fun, struct ir_print_annotations *annotations) {
+void function_dumpDot(ir_context_t *ctx, function_t *fun, struct ir_print_annotations *annotations) {
     hashset_t visited;
     hashset_init(&visited, ptrKeyType); 
 
@@ -244,9 +244,9 @@ void function_dumpDot(struct ir_context *ctx, function_t *fun, struct ir_print_a
     free(result);
 }
 
-void inst_dumpd(struct ir_context *ctx, instruction_t *inst, dbuffer_t *dbuffer, size_t dot);
+void inst_dumpd(ir_context_t *ctx, instruction_t *inst, dbuffer_t *dbuffer, size_t dot);
 
-void inst_dump(struct ir_context *ctx, instruction_t *inst) {
+void inst_dump(ir_context_t *ctx, instruction_t *inst) {
     dbuffer_t dbuffer;
     dbuffer_init(&dbuffer);
     inst_dumpd(ctx, inst, &dbuffer, 0);
@@ -258,7 +258,7 @@ void inst_dump(struct ir_context *ctx, instruction_t *inst) {
 // We need to have a hack for proper dot formatting.
 #define _B_NEW_LINE dbuffer_pushStr(dbuffer, dot ? "\\l" : "\n") 
 
-void block_dump(struct ir_context *ctx, basic_block_t *block, dbuffer_t *dbuffer,
+void block_dump(ir_context_t *ctx, basic_block_t *block, dbuffer_t *dbuffer,
                 int dot, struct ir_print_annotations *annotations) {
     range_t bName = value_getName(ctx, &block->value); 
     
@@ -296,7 +296,7 @@ void block_dump(struct ir_context *ctx, basic_block_t *block, dbuffer_t *dbuffer
     }
 }
 
-void inst_dumpd(struct ir_context *ctx, instruction_t *inst, dbuffer_t *dbuffer, size_t dot) {
+void inst_dumpd(ir_context_t *ctx, instruction_t *inst, dbuffer_t *dbuffer, size_t dot) {
     if (inst->value.dataType != VOID) {
         range_t vName = value_getName(ctx, &inst->value);
         format_dbuffer("%{range} = ", dbuffer, vName);
@@ -365,7 +365,7 @@ instruction_t* block_lastInstruction(basic_block_t *block) {
 
 // Boiler plate stuff
 #define GEN_NEW_INST(enu, prefix) INST_TYPE(prefix)*                       \
-    _inst_new_##prefix(struct ir_context *ctx, enum value_type type) {     \
+    _inst_new_##prefix(ir_context_t *ctx, enum value_type type) {     \
     INST_TYPE(prefix) *result = znnew(&ctx->alloc, INST_TYPE(prefix));     \
     *result = (INST_TYPE(prefix)){};                                       \
     _value_init(&result->inst.value, INST, type);                          \
@@ -378,7 +378,7 @@ INSTRUCTIONS(GEN_NEW_INST)
 
 // TODO: Consider allowing the creation of functions without a entry block.
 // this would be very usefull for ir creation.
-function_t* ir_new_function(struct ir_context *ctx, range_t name) {
+function_t* ir_new_function(ir_context_t *ctx, range_t name) {
     function_t *fun = znnew(&ctx->alloc, function_t);
     fun->valueNameCounter = 0; 
 
@@ -386,13 +386,13 @@ function_t* ir_new_function(struct ir_context *ctx, range_t name) {
     return fun;
 }
 
-struct inst_load_var* inst_new_load_var(struct ir_context *ctx, size_t i, enum data_type type) {
+struct inst_load_var* inst_new_load_var(ir_context_t *ctx, size_t i, enum data_type type) {
     struct inst_load_var *var = _inst_new_load_var(ctx, type);
     var->rId = i;
     return var; 
 }
 
-struct inst_assign_var* inst_new_assign_var(struct ir_context *ctx, size_t i, struct value *value) {
+struct inst_assign_var* inst_new_assign_var(ir_context_t *ctx, size_t i, struct value *value) {
     struct inst_assign_var *var = _inst_new_assign_var(ctx, VOID);
     var->rId = i;
     
@@ -400,7 +400,7 @@ struct inst_assign_var* inst_new_assign_var(struct ir_context *ctx, size_t i, st
     return var;
 }
 
-struct inst_binary* inst_new_binary(struct ir_context *ctx, enum binary_ops type, struct value *a, struct value *b) {
+struct inst_binary* inst_new_binary(ir_context_t *ctx, enum binary_ops type, struct value *a, struct value *b) {
     assert(a->dataType == b->dataType && "data type mismatch");
     
     struct inst_binary *bin = _inst_new_binary(ctx, a->dataType);
@@ -411,13 +411,13 @@ struct inst_binary* inst_new_binary(struct ir_context *ctx, enum binary_ops type
     return bin;
 }
 
-struct inst_jump* inst_new_jump(struct ir_context *ctx, basic_block_t *block) {
+struct inst_jump* inst_new_jump(ir_context_t *ctx, basic_block_t *block) {
     struct inst_jump *jump = _inst_new_jump(ctx, VOID);
     inst_setUse(ctx, &jump->inst, 0, &block->value);
     return jump;
 }
 
-struct inst_jump_cond* inst_new_jump_cond(struct ir_context *ctx, basic_block_t *a, basic_block_t *b, struct value *cond) {
+struct inst_jump_cond* inst_new_jump_cond(ir_context_t *ctx, basic_block_t *a, basic_block_t *b, struct value *cond) {
     struct inst_jump_cond *jump = _inst_new_jump_cond(ctx, VOID);
     inst_setUse(ctx, &jump->inst, 0, &a->value);
     inst_setUse(ctx, &jump->inst, 1, &b->value);
@@ -426,12 +426,12 @@ struct inst_jump_cond* inst_new_jump_cond(struct ir_context *ctx, basic_block_t 
     return jump;
 }
 
-struct inst_return* inst_new_return(struct ir_context *ctx) {
+struct inst_return* inst_new_return(ir_context_t *ctx) {
     return _inst_new_return(ctx, VOID);
 }
 
 
-struct inst_phi* inst_new_phi(struct ir_context *ctx, enum data_type type, size_t valueCount) {
+struct inst_phi* inst_new_phi(ir_context_t *ctx, enum data_type type, size_t valueCount) {
     struct inst_phi *phi = _inst_new_phi(ctx, type);
 
     // We store block and value.
@@ -445,7 +445,7 @@ struct inst_phi* inst_new_phi(struct ir_context *ctx, enum data_type type, size_
     return phi; 
 }
 
-void inst_phi_insertValue(struct inst_phi *phi, struct ir_context *ctx, basic_block_t *block, struct value *value) {
+void inst_phi_insertValue(struct inst_phi *phi, ir_context_t *ctx, basic_block_t *block, struct value *value) {
     // iterate over the uses to make sure we don't have already have the value.
     for (size_t i = 0; i < phi->useCount; i += 2) {
         if (phi->uses[i]->value == &block->value && phi->uses[i + 1]->value == value)
@@ -493,7 +493,7 @@ case enu: {                                                                \
 } 
 
 /*
-void ir_addFunction(struct ir_context *context, function_t *function) {
+void ir_addFunction(ir_context_t *context, function_t *function) {
     hashmap_setRange(&context->functionNames, function->name);
     list_add(&context->functions, &function->functions, );
 } 

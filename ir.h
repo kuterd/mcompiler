@@ -43,13 +43,13 @@ enum data_type {
 };
 
 // The IR context, manages all IR objects. 
-struct ir_context {
+typedef struct {
     struct list_head functions;
     // The allocator for all IR objects.
     zone_allocator alloc;
     // Special instructions that contain heap objects.
     struct list_head specialInstructions;
-};
+} ir_context_t;
 
 // Type of the value. 
 enum value_type {
@@ -232,63 +232,63 @@ struct ir_print_annotations {
 };
 
 // set the name of the value. doesn't take ownership, creates a copy. 
-void value_setName(struct ir_context *ctx, struct value *value, range_t name);
+void value_setName(ir_context_t *ctx, struct value *value, range_t name);
 
 // get the name of the value, this will assign a name if needed.
-range_t value_getName(struct ir_context *ctx, struct value *value);
+range_t value_getName(ir_context_t *ctx, struct value *value);
 
 // replace all uses of a value with another value.
 void value_replaceAllUses(struct value *value, struct value *replacement);
 
 // dump a function.
-void function_dump(struct ir_context *ctx, function_t *fun, struct ir_print_annotations *annotations);
+void function_dump(ir_context_t *ctx, function_t *fun, struct ir_print_annotations *annotations);
 
 // dump a function as a dot file.
-void function_dumpDot(struct ir_context *ctx, function_t *fun, struct ir_print_annotations *annotations);
+void function_dumpDot(ir_context_t *ctx, function_t *fun, struct ir_print_annotations *annotations);
 
 // dump a instruction.
-void inst_dump(struct ir_context *ctx, instruction_t *inst);
+void inst_dump(ir_context_t *ctx, instruction_t *inst);
 
-//void block_dump(struct ir_context *ctx, basic_block_t *block);
+//void block_dump(ir_context_t *ctx, basic_block_t *block);
 
 // initialize the ir context.
-void ir_context_init(struct ir_context *context);
+void ir_context_init(ir_context_t *context);
 
 // free the ir context
-void ir_context_free(struct ir_context *context);
+void ir_context_free(ir_context_t *context);
 
 // Create a var load instruction (only valid before ssa conversion)
-struct inst_load_var* inst_new_load_var(struct ir_context *ctx, size_t i, enum data_type type);
+struct inst_load_var* inst_new_load_var(ir_context_t *ctx, size_t i, enum data_type type);
 
 // Create a assign instruction (only valid before ssa conversion 
-struct inst_assign_var* inst_new_assign_var(struct ir_context *ctx, size_t i, struct value *value); 
+struct inst_assign_var* inst_new_assign_var(ir_context_t *ctx, size_t i, struct value *value); 
 
 // Create a binary op instruction.
-struct inst_binary* inst_new_binary(struct ir_context *ctx, enum binary_ops type, struct value *a, struct value *b); 
+struct inst_binary* inst_new_binary(ir_context_t *ctx, enum binary_ops type, struct value *a, struct value *b); 
 
 // Create a jump instruction
-struct inst_jump* inst_new_jump(struct ir_context *ctx, basic_block_t *block); 
+struct inst_jump* inst_new_jump(ir_context_t *ctx, basic_block_t *block); 
 
 // Create a conditional jump instruction.
-struct inst_jump_cond* inst_new_jump_cond(struct ir_context *ctx, basic_block_t *a, basic_block_t *b, struct value *cond);
+struct inst_jump_cond* inst_new_jump_cond(ir_context_t *ctx, basic_block_t *a, basic_block_t *b, struct value *cond);
 
 // Create a new return instruction
 // FIXME: Missing return value.
-struct inst_return* inst_new_return(struct ir_context *ctx);
+struct inst_return* inst_new_return(ir_context_t *ctx);
 
 // Create a new phi value.
-struct inst_phi* inst_new_phi(struct ir_context *ctx, enum data_type type, size_t valueCount);
+struct inst_phi* inst_new_phi(ir_context_t *ctx, enum data_type type, size_t valueCount);
 
 // Insert a new value to the phi instruction.
 
-void inst_phi_insertValue(struct inst_phi *phi, struct ir_context *ctx, basic_block_t *block, struct value *value);
+void inst_phi_insertValue(struct inst_phi *phi, ir_context_t *ctx, basic_block_t *block, struct value *value);
 
 // Create a new function.
 // FIXME: Missing return value.
-function_t* ir_new_function(struct ir_context *context, range_t name);
+function_t* ir_new_function(ir_context_t *context, range_t name);
 
 // Set a use of the instruction.
-void inst_setUse(struct ir_context *ctx, instruction_t *inst, size_t useOffset, struct value *value);
+void inst_setUse(ir_context_t *ctx, instruction_t *inst, size_t useOffset, struct value *value);
 
 // Insert a instruction after the inst.
 void inst_insertAfter(instruction_t *inst, instruction_t *add);
@@ -297,7 +297,7 @@ void inst_insertAfter(instruction_t *inst, instruction_t *add);
 void inst_remove(instruction_t *inst);
 
 // Create a new block
-basic_block_t* block_new(struct ir_context *ctx, function_t *fn);
+basic_block_t* block_new(ir_context_t *ctx, function_t *fn);
 
 // Insert a instruction at the top.
 void block_insertTop(basic_block_t *block, instruction_t *inst);
@@ -309,7 +309,7 @@ void block_insert(basic_block_t *block, instruction_t *inst);
 use_t** inst_getUses(instruction_t *inst, size_t *count);
 
 // Create a new constant value.
-struct value_constant* ir_constant_value(struct ir_context *ctx, int64_t value);
+struct value_constant* ir_constant_value(ir_context_t *ctx, int64_t value);
 
 /// ---- Iterators ----
 

@@ -52,7 +52,7 @@ void domfrontiers_compute(struct domfrontiers *df, struct dominators *doms);
 // Get a list of dominance frontiers.
 basic_block_t** domfrontiers_get(struct domfrontiers *df, basic_block_t *block, size_t *size);
 
-void dominators_dumpDot(struct dominators *doms, struct ir_context *ctx);
+void dominators_dumpDot(struct dominators *doms, ir_context_t *ctx);
 
 struct dominator_child_it {
     struct dominators *doms;

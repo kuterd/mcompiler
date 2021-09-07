@@ -17,7 +17,6 @@
 //      so we need a worklist algorithm.
 // Step 3: "Rename" values.
 
-
 // Information about a register.
 struct reg_info {
     size_t rId;
@@ -65,7 +64,7 @@ struct reg_block_info {
     struct hm_bucket_entry bucket;
 };
 
-struct phi_info* block_info_getOrCreatePhi(struct block_info *bInfo, basic_block_t *block, struct ir_context *ctx, zone_allocator *alloc, size_t rId, enum data_type type) {
+struct phi_info* block_info_getOrCreatePhi(struct block_info *bInfo, basic_block_t *block, ir_context_t *ctx, zone_allocator *alloc, size_t rId, enum data_type type) {
     struct hm_bucket_entry *entry = hashmap_getInt(&bInfo->phiMap, rId);   
     if (entry)
         return containerof(entry, struct phi_info, bucket);
@@ -137,7 +136,7 @@ void _popValue(hashmap_t *variableMap, size_t vId) {
 // Reanme variables, this is the final step of ssa conversion.
 // We visit blocks in DFS, push assignments to the stack.
 // we have to cleanup the stack before returning to the predecessor. 
-void ssa_rename(struct ir_context *ctx, struct block_info *bInfoArray,
+void ssa_rename(ir_context_t *ctx, struct block_info *bInfoArray,
                      hashmap_t *variableMap, struct dominators *doms, basic_block_t *current) {
     // get the block number based on post order number.
     size_t number = dominators_getNumber(doms, current);
@@ -225,7 +224,7 @@ void ssa_rename(struct ir_context *ctx, struct block_info *bInfoArray,
     }
 }
 
-void ssa_convert(struct ir_context *ctx, function_t *fun,
+void ssa_convert(ir_context_t *ctx, function_t *fun,
     struct dominators *doms, struct domfrontiers *df) {
     struct block_info *blockInfo = dmalloc(doms->elementCount * sizeof(struct block_info)); 
 

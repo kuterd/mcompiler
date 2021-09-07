@@ -29,7 +29,7 @@ int main (int argc, char *args[]) {
         puts("unknown parser error");
 
     // --- Convert to IR. --- 
-    struct ir_context ctx;
+    ir_context_t ctx;
     ir_context_init(&ctx);
 
     struct ir_creator creator;

@@ -9,7 +9,7 @@ basic_block_t* create_test_block(struct ir_, fncontext *ctx, function_t *fn, bas
     block_insert(prev, &jmp->inst);
 }
 */
-basic_block_t* create_test_cfg(struct ir_context *ctx, function_t *fn) {
+basic_block_t* create_test_cfg(ir_context_t *ctx, function_t *fn) {
     int i = 0;
     basic_block_t *prev = block_new(ctx, fn);
     prev->value.name = format_range("{int}", i + 1);
@@ -28,7 +28,7 @@ basic_block_t* create_test_cfg(struct ir_context *ctx, function_t *fn) {
 }
 
 int main(int argc, char *args[]) {
-    struct ir_context ctx;
+    ir_context_t ctx;
     ir_context_init(&ctx);    
     
     function_t *fun = ir_new_function(&ctx, RANGE_STRING("test"));

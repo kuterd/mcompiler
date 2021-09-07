@@ -193,7 +193,7 @@ basic_block_t** domfrontiers_get(struct domfrontiers *df, basic_block_t *block, 
     return (basic_block_t**)dfElem->dlist.buffer;
 }
 
-void _dumpDotNode(struct dominators *doms, struct Graph *graph, struct ir_context *ctx, struct dom_node *node) {
+void _dumpDotNode(struct dominators *doms, struct Graph *graph, ir_context_t *ctx, struct dom_node *node) {
     char nodeName[MAX_NODE_ID];
     getNodeId(node, nodeName);
     size_t childCount;
@@ -213,7 +213,7 @@ void _dumpDotNode(struct dominators *doms, struct Graph *graph, struct ir_contex
     }
 }
 
-void dominators_dumpDot(struct dominators *doms, struct ir_context *ctx) {
+void dominators_dumpDot(struct dominators *doms, ir_context_t *ctx) {
     struct Graph graph;
     graph_init(&graph, "dominators", 1);
     _dumpDotNode(doms, &graph, ctx, &doms->domNodes[doms->elementCount - 1]);

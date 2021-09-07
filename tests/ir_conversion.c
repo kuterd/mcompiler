@@ -28,7 +28,7 @@ int main() {
     else if (!node)
         puts("unknown parser error");
     
-    struct ir_context ctx;
+    ir_context_t ctx;
     ir_context_init(&ctx);
 
     struct ir_creator creator;

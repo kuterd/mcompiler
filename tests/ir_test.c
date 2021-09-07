@@ -1,7 +1,7 @@
 #include "ir.h"
 #include <assert.h>
 
-basic_block_t* generate_testBlock(struct ir_context *ctx, function_t *fn, int i) {
+basic_block_t* generate_testBlock(ir_context_t *ctx, function_t *fn, int i) {
     basic_block_t *bb = block_new(ctx, fn);
     
     struct value_constant *con = ir_constant_value(ctx, i);
@@ -12,7 +12,7 @@ basic_block_t* generate_testBlock(struct ir_context *ctx, function_t *fn, int i)
 }
 
 void test_dumpDot() {
-    struct ir_context ctx;    
+    ir_context_t ctx;    
     ir_context_init(&ctx); 
 
     function_t *fun = ir_new_function(&ctx, RANGE_STRING("test"));
@@ -47,7 +47,7 @@ void test_dumpDot() {
 }
 
 void test_replace() {
-    struct ir_context ctx;
+    ir_context_t ctx;
     ir_context_init(&ctx);
     
     function_t *fun = ir_new_function(&ctx, RANGE_STRING("test"));

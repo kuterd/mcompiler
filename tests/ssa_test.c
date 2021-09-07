@@ -35,7 +35,7 @@ int main (int argc, char *args[]) {
     struct ir_creator creator;
     ir_creator_init(&creator, &ctx);    
  
-    struct function *function = 
+    function_t *function = 
         ir_creator_createFunction(&creator, AST_AS_TYPE(node, function));     
     basic_block_t *block = function->entry;
 

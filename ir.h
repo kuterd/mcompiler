@@ -85,7 +85,7 @@ typedef struct {
     struct list_head instructions;
     
     // The function that contains this block.
-    struct function *parent;
+    function_t *parent;
 } basic_block_t;
 
 struct function {
@@ -240,10 +240,10 @@ range_t value_getName(struct ir_context *ctx, struct value *value);
 void value_replaceAllUses(struct value *value, struct value *replacement);
 
 // dump a function.
-void function_dump(struct ir_context *ctx, struct function *fun, struct ir_print_annotations *annotations);
+void function_dump(struct ir_context *ctx, function_t *fun, struct ir_print_annotations *annotations);
 
 // dump a function as a dot file.
-void function_dumpDot(struct ir_context *ctx, struct function *fun, struct ir_print_annotations *annotations);
+void function_dumpDot(struct ir_context *ctx, function_t *fun, struct ir_print_annotations *annotations);
 
 // dump a instruction.
 void inst_dump(struct ir_context *ctx, struct instruction *inst);
@@ -284,7 +284,7 @@ void inst_phi_insertValue(struct inst_phi *phi, struct ir_context *ctx, basic_bl
 
 // Create a new function.
 // FIXME: Missing return value.
-struct function* ir_new_function(struct ir_context *context, range_t name);
+function_t* ir_new_function(struct ir_context *context, range_t name);
 
 // Set a use of the instruction.
 void inst_setUse(struct ir_context *ctx, struct instruction *inst, size_t useOffset, struct value *value);
@@ -296,7 +296,7 @@ void inst_insertAfter(struct instruction *inst, struct instruction *add);
 void inst_remove(struct instruction *inst);
 
 // Create a new block
-basic_block_t* block_new(struct ir_context *ctx, struct function *fn);
+basic_block_t* block_new(struct ir_context *ctx, function_t *fn);
 
 // Insert a instruction at the top.
 void block_insertTop(basic_block_t *block, struct instruction *inst);

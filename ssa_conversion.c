@@ -225,7 +225,7 @@ void ssa_rename(struct ir_context *ctx, struct block_info *bInfoArray,
     }
 }
 
-void ssa_convert(struct ir_context *ctx, struct function *fun,
+void ssa_convert(struct ir_context *ctx, function_t *fun,
     struct dominators *doms, struct domfrontiers *df) {
     struct block_info *blockInfo = dmalloc(doms->elementCount * sizeof(struct block_info)); 
 

@@ -3,13 +3,13 @@
 #include "format.h"
 #include <stdio.h>
 /*
-basic_block_t* create_test_block(struct ir_, fncontext *ctx, struct function *fn, basic_block_t *prev) {
+basic_block_t* create_test_block(struct ir_, fncontext *ctx, function_t *fn, basic_block_t *prev) {
     basic_block_t *block = block_new(ctx, fn);
     struct inst_jump *jmp = inst_new_jump(ctx, block);
     block_insert(prev, &jmp->inst);
 }
 */
-basic_block_t* create_test_cfg(struct ir_context *ctx, struct function *fn) {
+basic_block_t* create_test_cfg(struct ir_context *ctx, function_t *fn) {
     int i = 0;
     basic_block_t *prev = block_new(ctx, fn);
     prev->value.name = format_range("{int}", i + 1);
@@ -31,7 +31,7 @@ int main(int argc, char *args[]) {
     struct ir_context ctx;
     ir_context_init(&ctx);    
     
-    struct function *fun = ir_new_function(&ctx, RANGE_STRING("test"));
+    function_t *fun = ir_new_function(&ctx, RANGE_STRING("test"));
     
     basic_block_t *entry = block_new(&ctx, fun);
     entry->value.name = RANGE_STRING("entry"); 

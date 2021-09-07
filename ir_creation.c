@@ -44,10 +44,10 @@ void ir_creator_init(struct ir_creator *creator, struct ir_context *ctx) {
 
 basic_block_t* create_block(struct ir_creator *creator, struct ast_block *block, basic_block_t **last);
 
-struct function* ir_creator_createFunction(struct ir_creator *creator, struct ast_function *func) {
+function_t* ir_creator_createFunction(struct ir_creator *creator, struct ast_function *func) {
     assert(func->childCount == func->argumentCount + 1 && "Incorrect child count for function");
     
-    struct function *result = ir_new_function(_ ctx, func->name);
+    function_t *result = ir_new_function(_ ctx, func->name);
     _ function = result;
 
     //FIXME: When we add arguments.

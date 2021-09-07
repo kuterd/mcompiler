@@ -84,7 +84,7 @@ void inst_remove(struct instruction *inst) {
 }
 
 
-basic_block_t* block_new(struct ir_context *ctx, struct function *fn) {
+basic_block_t* block_new(struct ir_context *ctx, function_t *fn) {
     basic_block_t* block = znnew(&ctx->alloc, basic_block_t);
     block->parent = fn;
     _value_init(&block->value, V_BLOCK, DT_BLOCK);
@@ -95,7 +95,7 @@ void block_dump(struct ir_context *ctx, basic_block_t *block, dbuffer_t *dbuffer
                 int dot, struct ir_print_annotations *annotations);
 
 
-struct function* value_getFunction(struct value *value) {
+function_t* value_getFunction(struct value *value) {
     if (value->type == V_BLOCK) {
         basic_block_t *block = containerof(value, basic_block_t, value);
         return block->parent;
@@ -111,7 +111,7 @@ range_t value_getName(struct ir_context *ctx, struct value *value) {
     if (value->name.size != 0)
         return value->name;
     // Generate a name for this value.
-    struct function *func = value_getFunction(value);
+    function_t *func = value_getFunction(value);
     
     size_t num = func->valueNameCounter++; 
     range_t name = format_range("{int}", num);
@@ -142,7 +142,7 @@ void value_replaceAllUses(struct value *value, struct value *replacement) {
     };
 }
 
-void function_dump(struct ir_context *ctx, struct function *fun, struct ir_print_annotations *annotations) {
+void function_dump(struct ir_context *ctx, function_t *fun, struct ir_print_annotations *annotations) {
     printf("%s function %.*s\n", kDataTypeNames[fun->returnType],
             fun->value.name.size, fun->value.name.ptr);
     hashset_t visited;
@@ -186,7 +186,7 @@ void function_dump(struct ir_context *ctx, struct function *fun, struct ir_print
     hashset_free(&visited);
 }
 
-void function_dumpDot(struct ir_context *ctx, struct function *fun, struct ir_print_annotations *annotations) {
+void function_dumpDot(struct ir_context *ctx, function_t *fun, struct ir_print_annotations *annotations) {
     hashset_t visited;
     hashset_init(&visited, ptrKeyType); 
 
@@ -378,8 +378,8 @@ INSTRUCTIONS(GEN_NEW_INST)
 
 // TODO: Consider allowing the creation of functions without a entry block.
 // this would be very usefull for ir creation.
-struct function* ir_new_function(struct ir_context *ctx, range_t name) {
-    struct function *fun = znnew(&ctx->alloc, struct function);
+function_t* ir_new_function(struct ir_context *ctx, range_t name) {
+    function_t *fun = znnew(&ctx->alloc, function_t);
     fun->valueNameCounter = 0; 
 
     list_add(&ctx->functions, &fun->functions);
@@ -493,7 +493,7 @@ case enu: {                                                                \
 } 
 
 /*
-void ir_addFunction(struct ir_context *context, struct function *function) {
+void ir_addFunction(struct ir_context *context, function_t *function) {
     hashmap_setRange(&context->functionNames, function->name);
     list_add(&context->functions, &function->functions, );
 } 

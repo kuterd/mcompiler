@@ -6,7 +6,7 @@ struct ir_creator {
     size_t regCount;
     
     // Current Function.
-    struct function *function;
+    function_t *function;
 
     // Current Block.
     basic_block_t *block;
@@ -15,6 +15,6 @@ struct ir_creator {
 };
 
 void ir_creator_init(struct ir_creator *creator, struct ir_context *ctx);
-struct function* ir_creator_createFunction(struct ir_creator *creator, struct ast_function *func);
+function_t* ir_creator_createFunction(struct ir_creator *creator, struct ast_function *func);
 
 #endif

@@ -32,7 +32,7 @@ struct reg_info {
 // Information about a phi with respect to the register it is creaated for.
 struct phi_info {
     size_t rId;
-    struct inst_phi *phiInst; 
+    inst_phi_t *phiInst; 
 
     struct hm_bucket_entry bucket;
 };
@@ -58,7 +58,7 @@ struct block_info {
 // Information about a reg within the context of a block.
 struct reg_block_info {
     // Last assignment to this variable with in this block, we will propagate this value.
-    struct inst_assign_var *lastAssign;    
+    inst_assign_var_t *lastAssign;    
 
     size_t rId;
     struct hm_bucket_entry bucket;
@@ -164,12 +164,12 @@ void ssa_rename(ir_context_t *ctx, struct block_info *bInfoArray,
     for (size_t i = 0; i < instCount; i++) {
         instruction_t *inst = loadAssignArray[i];
         if (inst->type == INST_LOAD_VAR) {
-            struct inst_load_var *load = containerof(inst, struct inst_load_var, inst);
+            inst_load_var_t *load = containerof(inst, inst_load_var_t, inst);
             struct value *lastValue = _getLastValue(variableMap, load->rId); 
             value_replaceAllUses(&load->inst.value, lastValue);
             inst_remove(&load->inst);
         } else if (inst->type == INST_ASSIGN_VAR) {
-            struct inst_assign_var *assign = containerof(inst, struct inst_assign_var, inst);
+            inst_assign_var_t *assign = containerof(inst, inst_assign_var_t, inst);
             _pushValue(variableMap, assign->rId, assign->var->value); 
             inst_remove(&assign->inst);
         } else {
@@ -212,7 +212,7 @@ void ssa_rename(ir_context_t *ctx, struct block_info *bInfoArray,
     for (size_t i = 0; i < instCount; i++) {
         instruction_t *inst = loadAssignArray[i];
         if (inst->type == INST_ASSIGN_VAR) {
-            struct inst_assign_var *assign = containerof(inst, struct inst_assign_var, inst);
+            inst_assign_var_t *assign = containerof(inst, inst_assign_var_t, inst);
             _popValue(variableMap, assign->rId); 
         } 
     }
@@ -258,11 +258,11 @@ void ssa_convert(ir_context_t *ctx, function_t *fun,
         LIST_FOR_EACH(&block->instructions) {
             instruction_t *inst = containerof(c, instruction_t, inst_list);
             if (inst->type == INST_LOAD_VAR) {
-                struct inst_load_var *lVar = containerof(inst, struct inst_load_var, inst);               
+                inst_load_var_t *lVar = containerof(inst, inst_load_var_t, inst);               
                 struct reg_block_info *rInfo = _getOrCreateRegInfo(bInfo, &bInfo->regList, &zone, lVar->rId);
                 dbuffer_pushPtr(&bInfo->loadAssigns, inst);
             } else if (inst->type == INST_ASSIGN_VAR) {
-                struct inst_assign_var *aVar = containerof(inst, struct inst_assign_var, inst);               
+                inst_assign_var_t *aVar = containerof(inst, inst_assign_var_t, inst);               
                 struct reg_block_info *rInfo = _getOrCreateRegInfo(bInfo, &bInfo->regList, &zone, aVar->rId);
                 rInfo->lastAssign = aVar;
                 dbuffer_pushPtr(&bInfo->loadAssigns, inst);
@@ -309,13 +309,13 @@ void ssa_convert(ir_context_t *ctx, function_t *fun,
         struct reg_info *var = vars[i];
 
         size_t assignCount;
-        struct inst_assign_var **assigns =
-            (struct inst_assign_var**)dbuffer_asPtrArray(&var->assigns, &assignCount); 
+        inst_assign_var_t **assigns =
+            (inst_assign_var_t**)dbuffer_asPtrArray(&var->assigns, &assignCount); 
 
         dbuffer_t tmp;
         dbuffer_init(&tmp);
         for (size_t iA = 0; iA < assignCount; iA++) {
-            struct inst_assign_var *assign = assigns[iA];
+            inst_assign_var_t *assign = assigns[iA];
             inst_dump(ctx, &assign->inst, &tmp); 
         }
         dbuffer_pushChar(&tmp, 0);
@@ -340,13 +340,13 @@ void ssa_convert(ir_context_t *ctx, function_t *fun,
         struct reg_info *var = vars[i];
 
         size_t assignCount;
-        struct inst_assign_var **assigns =
-            (struct inst_assign_var**)dbuffer_asPtrArray(&var->assigns, &assignCount); 
+        inst_assign_var_t **assigns =
+            (inst_assign_var_t**)dbuffer_asPtrArray(&var->assigns, &assignCount); 
         dbuffer_clear(&worklist);
  
         // go over the assignmensts.
         for (size_t iA = 0; iA < assignCount; iA++) {
-            struct inst_assign_var *assign = assigns[iA];
+            inst_assign_var_t *assign = assigns[iA];
             basic_block_t *block = assign->inst.parent;
             size_t bId = dominators_getNumber(doms, block); 
             lastIteration[bId] = i;           

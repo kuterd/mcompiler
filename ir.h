@@ -4,7 +4,7 @@
 #include "buffer.h"
 #include "hashmap.h"
 
-#define INST_TYPE(prefix) struct inst_##prefix
+#define INST_TYPE(prefix) inst_##prefix##_t
 
 #define IR_VALUE_AS_TYPE(ptr, type) containerof(ptr, type, value)
 #define IR_INST_AS_TYPE(ptr, type) containerof(ptr, type, inst)
@@ -134,8 +134,8 @@ struct instruction {
     basic_block_t *parent;
 };
 
-// A phi instruction, used for the SSA form.
-struct inst_phi {
+// The magic phi instruction, used for the SSA form.
+typedef struct {
     instruction_t inst;
      
     dbuffer_t useBuffer; 
@@ -147,7 +147,7 @@ struct inst_phi {
     use_t **uses;
 
     struct list_head specialList; 
-};
+} inst_phi_t;
 
 enum binary_ops {
     BO_ADD,
@@ -163,7 +163,7 @@ enum binary_ops {
 };
 
 // A binary instruction(add, subtract, multiply ...).
-struct inst_binary {
+typedef struct {
     instruction_t inst;
     enum binary_ops op;
     union {
@@ -173,17 +173,17 @@ struct inst_binary {
             use_t *right;
         };
     };
-};
+} inst_binary_t;
 
 // A load instruction, only valid before SSA conversion.
-struct inst_load_var {
+typedef struct {
     instruction_t inst;
     size_t rId;
     use_t *uses[0];
-};
+} inst_load_var_t;
 
 // An assign instruction, only valid before SSA conversion.
-struct inst_assign_var {
+typedef struct {
     instruction_t inst;
     size_t rId;
     
@@ -191,36 +191,36 @@ struct inst_assign_var {
        use_t *uses[1];
        use_t *var;
     };
-};
+} inst_assign_var_t;
 
 // A function call instruction.
-struct inst_function_call {
+typedef struct {
     instruction_t inst;
     
     // A function call have variable number of uses,
     // this is needed for passing arguments.
     size_t useCount;
     use_t **uses;
-};
+} inst_function_call_t;
 
 // A jump instruction, jumps to a basic block.
-struct inst_jump {
+typedef struct {
     instruction_t inst;
     use_t *uses[1];
-};
+} inst_jump_t;
 
 // A conditional jump instruction, jumps to basic block conditionally.
-struct inst_jump_cond {
+typedef struct {
     instruction_t inst;
     use_t *uses[3];
-};
+} inst_jump_cond_t;
 
 // A return instruction.
-struct inst_return {
+typedef struct {
     instruction_t inst;
     size_t hasReturn;
     use_t *uses[1];
-};
+} inst_return_t;
 
 struct dominators;
 struct domfrontiers;
@@ -258,30 +258,30 @@ void ir_context_init(ir_context_t *context);
 void ir_context_free(ir_context_t *context);
 
 // Create a var load instruction (only valid before ssa conversion)
-struct inst_load_var* inst_new_load_var(ir_context_t *ctx, size_t i, enum data_type type);
+inst_load_var_t* inst_new_load_var(ir_context_t *ctx, size_t i, enum data_type type);
 
 // Create a assign instruction (only valid before ssa conversion 
-struct inst_assign_var* inst_new_assign_var(ir_context_t *ctx, size_t i, struct value *value); 
+inst_assign_var_t* inst_new_assign_var(ir_context_t *ctx, size_t i, struct value *value); 
 
 // Create a binary op instruction.
-struct inst_binary* inst_new_binary(ir_context_t *ctx, enum binary_ops type, struct value *a, struct value *b); 
+inst_binary_t* inst_new_binary(ir_context_t *ctx, enum binary_ops type, struct value *a, struct value *b); 
 
 // Create a jump instruction
-struct inst_jump* inst_new_jump(ir_context_t *ctx, basic_block_t *block); 
+inst_jump_t* inst_new_jump(ir_context_t *ctx, basic_block_t *block); 
 
 // Create a conditional jump instruction.
-struct inst_jump_cond* inst_new_jump_cond(ir_context_t *ctx, basic_block_t *a, basic_block_t *b, struct value *cond);
+inst_jump_cond_t* inst_new_jump_cond(ir_context_t *ctx, basic_block_t *a, basic_block_t *b, struct value *cond);
 
 // Create a new return instruction
 // FIXME: Missing return value.
-struct inst_return* inst_new_return(ir_context_t *ctx);
+inst_return_t* inst_new_return(ir_context_t *ctx);
 
 // Create a new phi value.
-struct inst_phi* inst_new_phi(ir_context_t *ctx, enum data_type type, size_t valueCount);
+inst_phi_t* inst_new_phi(ir_context_t *ctx, enum data_type type, size_t valueCount);
 
 // Insert a new value to the phi instruction.
 
-void inst_phi_insertValue(struct inst_phi *phi, ir_context_t *ctx, basic_block_t *block, struct value *value);
+void inst_phi_insertValue(inst_phi_t *phi, ir_context_t *ctx, basic_block_t *block, struct value *value);
 
 // Create a new function.
 // FIXME: Missing return value.

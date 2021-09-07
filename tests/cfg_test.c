@@ -5,7 +5,7 @@
 /*
 basic_block_t* create_test_block(struct ir_, fncontext *ctx, function_t *fn, basic_block_t *prev) {
     basic_block_t *block = block_new(ctx, fn);
-    struct inst_jump *jmp = inst_new_jump(ctx, block);
+    inst_jump_t *jmp = inst_new_jump(ctx, block);
     block_insert(prev, &jmp->inst);
 }
 */
@@ -19,7 +19,7 @@ basic_block_t* create_test_cfg(ir_context_t *ctx, function_t *fn) {
         basic_block_t *nblock = block_new(ctx, fn); 
         nblock->value.name = format_range("{int}", i + 1);
  
-        struct inst_jump *jmp = inst_new_jump(ctx, nblock);
+        inst_jump_t *jmp = inst_new_jump(ctx, nblock);
         block_insert(prev, &jmp->inst);
         prev = nblock;
     }
@@ -43,7 +43,7 @@ int main(int argc, char *args[]) {
     struct value_constant *cnst = ir_constant_value(&ctx, 1); 
 
 
-    struct inst_jump_cond *cond = inst_new_jump_cond(&ctx, a, b, &cnst->value);
+    inst_jump_cond_t *cond = inst_new_jump_cond(&ctx, a, b, &cnst->value);
     block_insert(entry, &cond->inst);
     fun->entry = entry;    
 

@@ -5,7 +5,7 @@ basic_block_t* generate_testBlock(ir_context_t *ctx, function_t *fn, int i) {
     basic_block_t *bb = block_new(ctx, fn);
     
     struct value_constant *con = ir_constant_value(ctx, i);
-    struct inst_assign_var *var = inst_new_assign_var(ctx, 1, &con->value);
+    inst_assign_var_t *var = inst_new_assign_var(ctx, 1, &con->value);
     block_insert(bb, &var->inst);
 
     return bb;
@@ -20,22 +20,22 @@ void test_dumpDot() {
     fun->entry = bb;
 
     struct value_constant *con = ir_constant_value(&ctx, 10);
-    struct inst_assign_var *var = inst_new_assign_var(&ctx, 1, &con->value);
-    struct inst_load_var *load = inst_new_load_var(&ctx, 1, INT64);
+    inst_assign_var_t *var = inst_new_assign_var(&ctx, 1, &con->value);
+    inst_load_var_t *load = inst_new_load_var(&ctx, 1, INT64);
     value_setName(&ctx, &load->inst.value, RANGE_STRING("loaded_value"));
 
     //struct value_constant *a = ir_constant_value(&ctx, 15);
     struct value_constant *b = ir_constant_value(&ctx, 20);
 
-    struct inst_binary *add = inst_new_binary(&ctx, BO_ADD, &load->inst.value, &b->value);
+    inst_binary_t *add = inst_new_binary(&ctx, BO_ADD, &load->inst.value, &b->value);
 
     basic_block_t *b1 = generate_testBlock(&ctx, fun, 13);
     basic_block_t *b2 = generate_testBlock(&ctx, fun, 10);
   
-    struct inst_jump *jumpTop = inst_new_jump(&ctx, bb);
+    inst_jump_t *jumpTop = inst_new_jump(&ctx, bb);
     block_insert(b1, &jumpTop->inst);
 
-    struct inst_jump_cond *jump = inst_new_jump_cond(&ctx, b1, b2, &con->value);
+    inst_jump_cond_t *jump = inst_new_jump_cond(&ctx, b1, b2, &con->value);
     
     block_insert(bb, &var->inst);
     block_insert(bb, &load->inst);
@@ -57,7 +57,7 @@ void test_replace() {
     struct value *v1 = &ir_constant_value(&ctx, 123)->value;
     struct value *v2 = &ir_constant_value(&ctx, 321)->value; 
 
-    struct inst_assign_var *assign = inst_new_assign_var(&ctx, 1, v1);
+    inst_assign_var_t *assign = inst_new_assign_var(&ctx, 1, v1);
     assert(assign->uses[0]->value == v1); 
  
     block_insert(block, &assign->inst); 

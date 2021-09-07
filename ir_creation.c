@@ -99,7 +99,7 @@ instruction_t* create_assignment(struct ir_creator *creator, struct ast_binary_e
     struct variable *var = _findReg(creator, variable->varName); 
 
     struct value *val = create_value(creator, exp->right); 
-    struct inst_assign_var *assign = inst_new_assign_var(creator->ctx, var->rId, val);
+    inst_assign_var_t *assign = inst_new_assign_var(creator->ctx, var->rId, val);
 
     block_insert(_ block, &assign->inst);
 }
@@ -141,7 +141,7 @@ struct value* create_binary(struct ir_creator *creator, struct ast_binary_exp *b
     struct value *left = create_value(creator, binary->left); 
     struct value *right = create_value(creator, binary->right);
  
-    struct inst_binary *result = inst_new_binary(_ ctx, op, left, right);
+    inst_binary_t *result = inst_new_binary(_ ctx, op, left, right);
 
     block_insert(_ block, &result->inst);
     return &result->inst.value;
@@ -149,7 +149,7 @@ struct value* create_binary(struct ir_creator *creator, struct ast_binary_exp *b
 
 instruction_t* create_variable(struct ir_creator *creator, struct ast_variable *var) {
     struct variable *varInfo = _findReg(creator, var->varName);
-    struct inst_load_var *loadVar = inst_new_load_var(_ ctx, varInfo->rId, convertDataType(varInfo->dataType)); 
+    inst_load_var_t *loadVar = inst_new_load_var(_ ctx, varInfo->rId, convertDataType(varInfo->dataType)); 
     block_insert(_ block, &loadVar->inst);
     return &loadVar->inst;
 }
@@ -187,13 +187,13 @@ void create_statement(struct ir_creator *creator, struct ast_node *node) {
         // we do not need to create a new block info since the variable scope is the same.
 
         basic_block_t *rest = block_new(_ ctx, _ function);
-        struct inst_jump_cond *cjump = inst_new_jump_cond(_ ctx, bblock, rest, cond);
+        inst_jump_cond_t *cjump = inst_new_jump_cond(_ ctx, bblock, rest, cond);
         
         block_insert(_ block, &cjump->inst); 
 
         // When the block associated with the if is complete, we want to jump to the rest 
         // block to continue execution. 
-        struct inst_jump *jump = inst_new_jump(_ ctx, rest);
+        inst_jump_t *jump = inst_new_jump(_ ctx, rest);
         block_insert(last, &jump->inst); 
 
         _ block = rest;

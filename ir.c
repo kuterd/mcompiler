@@ -306,14 +306,14 @@ void inst_dumpd(ir_context_t *ctx, instruction_t *inst, dbuffer_t *dbuffer, size
     //Custom inline paramaters. 
     switch(inst->type)  {
         case INST_LOAD_VAR:
-            format_dbuffer("{int}", dbuffer, IR_INST_AS_TYPE(inst, struct inst_load_var)->rId);
+            format_dbuffer("{int}", dbuffer, IR_INST_AS_TYPE(inst, inst_load_var_t)->rId);
             break;
         case INST_ASSIGN_VAR:
-            format_dbuffer("{int}, ", dbuffer, IR_INST_AS_TYPE(inst, struct inst_assign_var)->rId);
+            format_dbuffer("{int}, ", dbuffer, IR_INST_AS_TYPE(inst, inst_assign_var_t)->rId);
             break;
         case INST_BINARY:
             format_dbuffer("{str} ", dbuffer,
-                    kBinaryOpNames[IR_INST_AS_TYPE(inst, struct inst_binary)->op]);
+                    kBinaryOpNames[IR_INST_AS_TYPE(inst, inst_binary_t)->op]);
             break;
     }
 
@@ -386,24 +386,24 @@ function_t* ir_new_function(ir_context_t *ctx, range_t name) {
     return fun;
 }
 
-struct inst_load_var* inst_new_load_var(ir_context_t *ctx, size_t i, enum data_type type) {
-    struct inst_load_var *var = _inst_new_load_var(ctx, type);
+inst_load_var_t* inst_new_load_var(ir_context_t *ctx, size_t i, enum data_type type) {
+    inst_load_var_t *var = _inst_new_load_var(ctx, type);
     var->rId = i;
     return var; 
 }
 
-struct inst_assign_var* inst_new_assign_var(ir_context_t *ctx, size_t i, struct value *value) {
-    struct inst_assign_var *var = _inst_new_assign_var(ctx, VOID);
+inst_assign_var_t* inst_new_assign_var(ir_context_t *ctx, size_t i, struct value *value) {
+    inst_assign_var_t *var = _inst_new_assign_var(ctx, VOID);
     var->rId = i;
     
     inst_setUse(ctx, &var->inst, 0, value);
     return var;
 }
 
-struct inst_binary* inst_new_binary(ir_context_t *ctx, enum binary_ops type, struct value *a, struct value *b) {
+inst_binary_t* inst_new_binary(ir_context_t *ctx, enum binary_ops type, struct value *a, struct value *b) {
     assert(a->dataType == b->dataType && "data type mismatch");
     
-    struct inst_binary *bin = _inst_new_binary(ctx, a->dataType);
+    inst_binary_t *bin = _inst_new_binary(ctx, a->dataType);
     bin->op = type;
     
     inst_setUse(ctx, &bin->inst, 0, a);
@@ -411,14 +411,14 @@ struct inst_binary* inst_new_binary(ir_context_t *ctx, enum binary_ops type, str
     return bin;
 }
 
-struct inst_jump* inst_new_jump(ir_context_t *ctx, basic_block_t *block) {
-    struct inst_jump *jump = _inst_new_jump(ctx, VOID);
+inst_jump_t* inst_new_jump(ir_context_t *ctx, basic_block_t *block) {
+    inst_jump_t *jump = _inst_new_jump(ctx, VOID);
     inst_setUse(ctx, &jump->inst, 0, &block->value);
     return jump;
 }
 
-struct inst_jump_cond* inst_new_jump_cond(ir_context_t *ctx, basic_block_t *a, basic_block_t *b, struct value *cond) {
-    struct inst_jump_cond *jump = _inst_new_jump_cond(ctx, VOID);
+inst_jump_cond_t* inst_new_jump_cond(ir_context_t *ctx, basic_block_t *a, basic_block_t *b, struct value *cond) {
+    inst_jump_cond_t *jump = _inst_new_jump_cond(ctx, VOID);
     inst_setUse(ctx, &jump->inst, 0, &a->value);
     inst_setUse(ctx, &jump->inst, 1, &b->value);
     inst_setUse(ctx, &jump->inst, 2, cond);
@@ -426,13 +426,13 @@ struct inst_jump_cond* inst_new_jump_cond(ir_context_t *ctx, basic_block_t *a, b
     return jump;
 }
 
-struct inst_return* inst_new_return(ir_context_t *ctx) {
+inst_return_t* inst_new_return(ir_context_t *ctx) {
     return _inst_new_return(ctx, VOID);
 }
 
 
-struct inst_phi* inst_new_phi(ir_context_t *ctx, enum data_type type, size_t valueCount) {
-    struct inst_phi *phi = _inst_new_phi(ctx, type);
+inst_phi_t* inst_new_phi(ir_context_t *ctx, enum data_type type, size_t valueCount) {
+    inst_phi_t *phi = _inst_new_phi(ctx, type);
 
     // We store block and value.
     size_t useReserve = max(valueCount, 8) * 2;
@@ -445,7 +445,7 @@ struct inst_phi* inst_new_phi(ir_context_t *ctx, enum data_type type, size_t val
     return phi; 
 }
 
-void inst_phi_insertValue(struct inst_phi *phi, ir_context_t *ctx, basic_block_t *block, struct value *value) {
+void inst_phi_insertValue(inst_phi_t *phi, ir_context_t *ctx, basic_block_t *block, struct value *value) {
     // iterate over the uses to make sure we don't have already have the value.
     for (size_t i = 0; i < phi->useCount; i += 2) {
         if (phi->uses[i]->value == &block->value && phi->uses[i + 1]->value == value)

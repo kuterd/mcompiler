@@ -13,6 +13,7 @@ enum reloc_size {
     INT32,
     INT64
 };
+
 // TODO: Platform specific stuff ?
 enum reloc_type {
     RELATIVE,
@@ -41,8 +42,7 @@ typedef struct {
 void relocation_set(label_t *label, enum reloc_type type, enum reloc_size size, int bias, size_t offset);
 void relocation_emit(dbuffer_t *dbuffer, label_t *label, 
         enum reloc_type type, enum reloc_size size, int bias); 
-
-        
+ 
 // internal function.
 // void relocation_apply(relocation_t *relocation, void *buffer, unsigned long offset, unsigned long memLocation);
 

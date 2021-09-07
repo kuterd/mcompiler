@@ -5,18 +5,20 @@
 #include "ir_creation.h"
 
 char *exp = 
-    "void test() {                     "
-    "   int64 a = 123;                 "
-    "   if (a == 1) {                  "
-    "     a = 312;                     "
-    "   }                              "
-    "   if (a == 2) {                  "
-    "     a = 456;                     "
-    "   }                              "
-    "}                                 ";
+    "void fib() {                       "
+    "  int64 num = 100;                 "
+    "  int64 a = 1;                     "
+    "  int64 b = 0;                     "
+    "  while(num > 0) {                 "
+    "    num = num - 1;                 "
+    "    int64 o = b;                   "
+    "    b = a;                         "
+    "    a = a + o;                     "
+    "  }                                "
+    "  return;                          "
+    "}                                  ";
 
 int main (int argc, char *args[]) {
-    
     //  --- Parse the function. ---
     range_t expRange = range_fromString(exp);
     parser_t parser;

@@ -585,7 +585,18 @@ struct ast_node* parser_parseWhile(parser_t *parser) {
     parser_check_silent(block);
     
     result->condition = condition;
-    result->block = block; 
+    result->block = block;
+
+    return &result->node; 
+}
+
+struct ast_node* parser_parseReturn(parser_t *parser) {
+    parser_next(parser);
+    // TODO: Parse the return value.
+    struct ast_return *result = ast_return_new(parser);
+    parser_expect(TK_SEMI_COLON, "expected semicolon after statement");
+     
+    return &result->node;
 }
 
 struct ast_node* parser_parseStatement(parser_t *parser) {
@@ -596,11 +607,10 @@ struct ast_node* parser_parseStatement(parser_t *parser) {
     switch(op.type) {
         case TK_KW_IF:
             return parser_parseIf(parser);
-        case TK_KW_RETURN:
-            assert("Not implemented");
-            break;
         case TK_KW_WHILE:
             return parser_parseWhile(parser);
+        case TK_KW_RETURN:
+            return parser_parseReturn(parser);
         case TK_ID:
             return parser_parseAssignmentOrCall(parser);
 

@@ -4,8 +4,7 @@
 #include "dot_builder.h"
 #include "dominators.h"
 
-
-// Note we should probably move this to a macro.
+// NOTE: we should probably move this to a macro.
 char *kBinaryOpNames[] = {
     "add",
     "sub",

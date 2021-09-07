@@ -197,6 +197,36 @@ void create_statement(struct ir_creator *creator, struct ast_node *node) {
         block_insert(last, &jump->inst); 
 
         _ block = rest;
+    } else if (node->type == WHILE) {
+        struct ast_while *while_node = AST_AS_TYPE(node, while);
+        
+        // this is where the loop condition lives.
+        basic_block_t *head = block_new(_ ctx, _ function);
+   
+        // jump to the head on entry.
+        inst_jump_t *ejump = inst_new_jump(_ ctx, head);
+        block_insert(_ block, &ejump->inst);
+
+        basic_block_t *last; 
+        // the loop body.
+        basic_block_t *body = create_block(creator, AST_AS_TYPE(while_node->block, block), &last);
+        // after we finished executing the loop body jump back to the loop head.
+        inst_jump_t *jump = inst_new_jump(_ ctx, head);
+        block_insert(body, &jump->inst);
+
+        // this is the part of code that comes after the function.
+        basic_block_t *exit = block_new(_ ctx, _ function);
+
+        // Materialize the condition.
+        _ block = head; 
+        value_t *cond = create_value(creator, while_node->condition);
+
+        // jump to body or exit.
+        inst_jump_cond_t *cjump = inst_new_jump_cond(_ ctx, body, exit, cond);
+        block_insert(_ block, &cjump->inst);
+        
+        // we are done. 
+        _ block = exit;
     } else if (node->type == DECLARATION) {
         struct ast_declaration *decl = AST_AS_TYPE(node, declaration);
         struct ast_binary_exp *exp = AST_AS_TYPE(decl->assignment, binary_exp);
@@ -204,7 +234,10 @@ void create_statement(struct ir_creator *creator, struct ast_node *node) {
         _createReg(creator, var->varName, decl->dataType); 
 
         create_assignment(creator, exp);
-    } 
+    } else if (node->type == RETURN) {
+        inst_return_t *returnInst = inst_new_return(_ ctx);
+        block_insert(_ block, &returnInst->inst);
+    }
 }
 
 basic_block_t* create_block(struct ir_creator *creator, struct ast_block *block, basic_block_t **last) {

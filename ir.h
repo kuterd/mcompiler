@@ -333,8 +333,11 @@ struct block_successor_it {
 };
 
 int block_successor_end(struct block_successor_it it);
+
 struct block_successor_it block_successor_begin(basic_block_t *block);
+
 struct block_successor_it block_successor_next(struct block_successor_it it);
+
 basic_block_t* block_successor_get(struct block_successor_it it);
 
 #endif

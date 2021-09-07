@@ -15,7 +15,7 @@
 //      place the value at dominance frontiers 
 //      When we insert a new phi it is a new assignment.
 //      so we need a worklist algorithm.
-// Step 3: "Rename" values.
+// Step 3: "Rename" values. Push them to Phi instructions.
 
 // Information about a register.
 struct reg_info {

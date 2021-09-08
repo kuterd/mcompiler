@@ -69,9 +69,9 @@ struct phi_info* block_info_getOrCreatePhi(struct block_info *bInfo, basic_block
     if (entry)
         return containerof(entry, struct phi_info, bucket);
     struct phi_info *phiInfo = znnew(alloc, struct phi_info);
-    phiInfo->rId = rId; 
+    phiInfo->rId = rId;
+    hashmap_setInt(&bInfo->phiMap, rId, &phiInfo->bucket);    
     dbuffer_pushPtr(&bInfo->phiList, phiInfo);
-    
     // Create the phi IR object.
     phiInfo->phiInst = inst_new_phi(ctx, type, 0);
     block_insertTop(block, &phiInfo->phiInst->inst);
@@ -371,7 +371,7 @@ void ssa_convert(ir_context_t *ctx, function_t *fun,
     
                 struct phi_info *phi = block_info_getOrCreatePhi(bInfo, dfBlock, ctx, &zone,
                                              var->rId, value->dataType);
-                inst_phi_insertValue(phi->phiInst, ctx, block, value); 
+                //inst_phi_insertValue(phi->phiInst, ctx, block, value); 
      
                 // if we haven't visited this block for this variable, insert it into our worklist.
                 if (lastIteration[bId] < i) {

@@ -249,7 +249,8 @@ void function_dumpDot(ir_context_t *ctx, function_t *fun, struct ir_print_annota
 // dump a instruction.
 void inst_dump(ir_context_t *ctx, instruction_t *inst);
 
-//void block_dump(ir_context_t *ctx, basic_block_t *block);
+// dump a basic_block
+void block_dump(ir_context_t *ctx, basic_block_t *block);
 
 // initialize the ir context.
 void ir_context_init(ir_context_t *context);

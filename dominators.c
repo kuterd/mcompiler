@@ -173,14 +173,12 @@ void domfrontiers_compute(struct domfrontiers *df, struct dominators *doms) {
         struct block_predecessor_it it = block_predecessor_begin(block);
         for(; !block_predecessor_end(it); it = block_predecessor_next(it)) {
             basic_block_t *runner = block_predecessor_get(it);
-            basic_block_t *runnerDom = dominators_getIDom(doms, runner);
             basic_block_t *dom = dominators_getIDom(doms, block);
             
             while (runner != dom) {
                 struct df_element *dfElem = _df_getElement(df, runner); 
                 dbuffer_pushPtr(&dfElem->dlist, block);
-                runner = runnerDom; 
-                runnerDom = dominators_getIDom(doms, runner);
+                runner = dominators_getIDom(doms, runner);
             }
         } 
     } 

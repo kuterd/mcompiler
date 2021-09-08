@@ -90,7 +90,7 @@ basic_block_t* block_new(ir_context_t *ctx, function_t *fn) {
     LIST_INIT(&block->instructions);
 }
 
-void block_dump(ir_context_t *ctx, basic_block_t *block, dbuffer_t *dbuffer,
+void _block_dump(ir_context_t *ctx, basic_block_t *block, dbuffer_t *dbuffer,
                 int dot, struct ir_print_annotations *annotations);
 
 
@@ -164,7 +164,7 @@ void function_dump(ir_context_t *ctx, function_t *fun, struct ir_print_annotatio
             hashset_insertPtr(&visited, block);        
             
             dbuffer_clear(&content);
-            block_dump(ctx, block, &content, 0, annotations);
+            _block_dump(ctx, block, &content, 0, annotations);
             printf("%.*s\n", content.usage, content.buffer);
 
             struct block_successor_it it = block_successor_begin(block); 
@@ -212,7 +212,7 @@ void function_dumpDot(ir_context_t *ctx, function_t *fun, struct ir_print_annota
             dbuffer_clear(&content);
             dbuffer_pushStr(&content, "label=\"");
             //TODO: Proper escape sequance. 
-            block_dump(ctx, block, &content, 1, annotations);
+            _block_dump(ctx, block, &content, 1, annotations);
             getNodeId(block, nodeId);
             dbuffer_pushChar(&content, '\"'); 
             dbuffer_pushChar(&content, 0);
@@ -257,7 +257,7 @@ void inst_dump(ir_context_t *ctx, instruction_t *inst) {
 // We need to have a hack for proper dot formatting.
 #define _B_NEW_LINE dbuffer_pushStr(dbuffer, dot ? "\\l" : "\n") 
 
-void block_dump(ir_context_t *ctx, basic_block_t *block, dbuffer_t *dbuffer,
+void _block_dump(ir_context_t *ctx, basic_block_t *block, dbuffer_t *dbuffer,
                 int dot, struct ir_print_annotations *annotations) {
     range_t bName = value_getName(ctx, &block->value); 
     
@@ -294,6 +294,15 @@ void block_dump(ir_context_t *ctx, basic_block_t *block, dbuffer_t *dbuffer,
         inst_dumpd(ctx, inst, dbuffer, dot); 
     }
 }
+
+void block_dump(ir_context_t *ctx, basic_block_t *block) {
+    dbuffer_t dbuffer;
+    dbuffer_init(&dbuffer);
+    _block_dump(ctx, block, &dbuffer, 0, NULL);
+    dbuffer_pushChar(&dbuffer, 0);
+    puts(dbuffer.buffer);
+    dbuffer_free(&dbuffer);
+} 
 
 void inst_dumpd(ir_context_t *ctx, instruction_t *inst, dbuffer_t *dbuffer, size_t dot) {
     if (inst->value.dataType != VOID) {

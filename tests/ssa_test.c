@@ -52,12 +52,8 @@ int main (int argc, char *args[]) {
     anno.doms = &doms;
     anno.df = &df;
 
-//    function_dumpDot(&ctx, function, NULL);
-   
     ssa_convert(&ctx, function, &doms, &df); 
-    function_dumpDot(&ctx, function, NULL);
-    
-    //dominators_dumpDot(&doms, &ctx);
+    function_dumpDot(&ctx, function, &anno);
 
     dominators_free(&doms);
     return 0;

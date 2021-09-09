@@ -1,83 +1,51 @@
 #ifndef PARSER_H
 #define PARSER_H
 
-#include "utils.h"
 #include "buffer.h"
+#include "utils.h"
 #include "zone_alloc.h"
 
-#define TK_TOKEN_TYPES(o) \
-    o(TK_EEOF)        \
-    o(TK_ERROR)       \
-    o(TK_ID)          \
-    o(TK_KW_WHILE)    \
-    o(TK_KW_IF)       \
-    o(TK_KW_ELSE)     \
-    o(TK_KW_VOID)     \
-    o(TK_KW_INT64)    \
-    o(TK_KW_RETURN)   \
-    o(TK_PLUS)        \
-    o(TK_MINUS)       \
-    o(TK_STRING)      \
-    o(TK_MUL)         \
-    o(TK_DIV)         \
-    o(TK_NUMBER)      \
-    o(TK_ASSIGN)      \
-    o(TK_EQUALS)      \
-    o(TK_GREATER)     \
-    o(TK_LESS_THAN)   \
-    o(TK_LESS_EQ)     \
-    o(TK_GREATER_EQ)  \
-    o(TK_CURLY_OPEN)  \
-    o(TK_CURLY_CLOSE) \
-    o(TK_PARAN_OPEN)  \
-    o(TK_PARAN_CLOSE) \
-    o(TK_SEMI_COLON)
+#define TK_TOKEN_TYPES(o)                                                      \
+    o(TK_EEOF) o(TK_ERROR) o(TK_ID) o(TK_KW_WHILE) o(TK_KW_IF) o(TK_KW_ELSE)   \
+        o(TK_KW_VOID) o(TK_KW_INT64) o(TK_KW_RETURN) o(TK_PLUS) o(TK_MINUS)    \
+            o(TK_STRING) o(TK_MUL) o(TK_DIV) o(TK_NUMBER) o(TK_ASSIGN)         \
+                o(TK_EQUALS) o(TK_GREATER) o(TK_LESS_THAN) o(TK_LESS_EQ)       \
+                    o(TK_GREATER_EQ) o(TK_CURLY_OPEN) o(TK_CURLY_CLOSE)        \
+                        o(TK_PARAN_OPEN) o(TK_PARAN_CLOSE) o(TK_SEMI_COLON)
 
-enum token_type {
-    TK_TOKEN_TYPES(COMMA)
-};
+enum token_type { TK_TOKEN_TYPES(COMMA) };
 
 struct token {
-    enum token_type type; 
+    enum token_type type;
     position_t pos;
-    range_t range;   
+    range_t range;
 };
 
-#define AST_NODE_TYPE(o)            \
-    o(NUMBER, number)               \
-    o(STRING, string)               \
-    o(VARIABLE, variable)           \
-    o(BINARY_EXP, binary_exp)       \
-    o(WHILE, while)                 \
-    o(IF, if)                       \
-    o(MODULE, module)               \
-    o(FUNCTION, function)           \
-    o(FUNCTION_CALL, function_call) \
-    o(BLOCK, block)                 \
-    o(PREFIX, prefix)               \
-    o(RETURN, return)               \
-    o(DECLARATION, declaration)
+#define AST_NODE_TYPE(o)                                                       \
+    o(NUMBER, number) o(STRING, string) o(VARIABLE, variable)                  \
+        o(BINARY_EXP, binary_exp) o(WHILE, while) o(IF, if) o(MODULE, module)  \
+            o(FUNCTION, function) o(FUNCTION_CALL, function_call)              \
+                o(BLOCK, block) o(PREFIX, prefix) o(RETURN, return )           \
+                    o(DECLARATION, declaration)
 
 #define AST_TYPE(prefix) struct ast_##prefix
-#define AST_AS_TYPE(ptr, prefix) containerof(ptr, AST_TYPE(prefix), node) 
+#define AST_AS_TYPE(ptr, prefix) containerof(ptr, AST_TYPE(prefix), node)
 
 #define COMMA2(e, p) e,
 #define STR_COMMA2(e, p) #e,
 
-enum ast_node_type {
-    AST_NODE_TYPE(COMMA2)
-};
+enum ast_node_type { AST_NODE_TYPE(COMMA2) };
 
 extern char *kASTNodeName[];
 
 struct ast_node {
     enum ast_node_type type;
-}; 
+};
 
 struct ast_module {
     struct ast_node node;
-    
-    // All children must be functions. 
+
+    // All children must be functions.
     struct ast_node **childs;
     size_t childCount;
 };
@@ -85,10 +53,10 @@ struct ast_module {
 struct ast_function {
     struct ast_node node;
     range_t name;
-    
+
     enum token_type returnType;
 
-    size_t argumentCount; 
+    size_t argumentCount;
     struct ast_node **childs;
     size_t childCount;
 };
@@ -121,7 +89,7 @@ struct ast_block {
 
 struct ast_if {
     struct ast_node node;
-    
+
     union {
         struct ast_node *childs[3];
         struct {
@@ -138,10 +106,10 @@ struct ast_binary_exp {
     enum token_type op;
     union {
         struct ast_node *childs[2];
-        
+
         struct {
-            struct ast_node *left;   
-            struct ast_node *right;   
+            struct ast_node *left;
+            struct ast_node *right;
         };
     };
 };
@@ -151,7 +119,7 @@ struct ast_number {
     int64_t num;
 };
 
-struct ast_variable { 
+struct ast_variable {
     struct ast_node node;
     range_t varName;
 };
@@ -178,26 +146,25 @@ struct ast_declaration {
 
     union {
         struct ast_node *childs[1];
-        struct ast_node *assignment;   
+        struct ast_node *assignment;
     };
-
 };
 
 struct ast_return {
     struct ast_node node;
 };
 
-// used for things like ast_module_new 
-#define GEN_NEW_DECLERATION(enu, prefix)                    \
-    AST_TYPE(prefix)* ast_##prefix##_new();
+// used for things like ast_module_new
+#define GEN_NEW_DECLERATION(enu, prefix)                                       \
+    AST_TYPE(prefix) * ast_##prefix##_new();
 
 AST_NODE_TYPE(GEN_NEW_DECLERATION)
 #undef GEN_NEW_DECLERATION
 
 void ast_nodeInfo(struct ast_node *node, size_t i);
 void ast_dump(struct ast_node *node, size_t i);
-char* ast_dumpDot(struct ast_node *node);
- 
+char *ast_dumpDot(struct ast_node *node);
+
 void token_dumpAll(char *string);
 
 struct reader {
@@ -213,12 +180,12 @@ typedef struct {
     zone_allocator zone;
 } parser_t;
 
-struct ast_node* parser_parseExpression(parser_t *parser);
-struct ast_node* parser_parseBlock(parser_t *parser);
-struct ast_node* parser_parseFunction(parser_t *parser);
+struct ast_node *parser_parseExpression(parser_t *parser);
+struct ast_node *parser_parseBlock(parser_t *parser);
+struct ast_node *parser_parseFunction(parser_t *parser);
 
 void parser_init(parser_t *parser, range_t range);
- 
+
 #undef COMMA2
 #undef STR_COMMA2
 #undef FIRST2

@@ -1,8 +1,8 @@
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <stdio.h>
 
-void* dmalloc(size_t size) {
+void *dmalloc(size_t size) {
     void *result = malloc(size);
     if (result == NULL) {
         puts("allocation failed");
@@ -33,5 +33,3 @@ void writeInt(char *buffer, unsigned long num, size_t bytes) {
         num = num >> 8;
     }
 }
-
-

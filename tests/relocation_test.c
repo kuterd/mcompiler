@@ -1,25 +1,23 @@
 #include <stdio.h>
 
-#include "relocation.h"
 #include "buffer.h"
+#include "relocation.h"
 
 int main(int argc, char *args[]) {
     dbuffer_t dbuffer;
     dbuffer_init(&dbuffer);
-    
+
     label_t testLabel = (label_t){};
-    relocation_set(&testLabel, RELATIVE, INT32, -4, dbuffer.usage); 
-    dbuffer_pushLong(&dbuffer, 0, 4);    
+    relocation_set(&testLabel, RELATIVE, INT32, -4, dbuffer.usage);
+    dbuffer_pushLong(&dbuffer, 0, 4);
     dbuffer_pushChars(&dbuffer, 0, 100);
-   
-    label_setOffset(&testLabel, dbuffer.usage);        
-    label_apply(&testLabel, dbuffer.buffer); 
-    
 
-    FILE *file = fopen("test.out", "wb");    
+    label_setOffset(&testLabel, dbuffer.usage);
+    label_apply(&testLabel, dbuffer.buffer);
 
-    dbuffer_write(&dbuffer, file);  
-    
+    FILE *file = fopen("test.out", "wb");
 
-    return 0; 
+    dbuffer_write(&dbuffer, file);
+
+    return 0;
 }

@@ -1,8 +1,9 @@
 // Kuter Dinel 2021
-// Intrusive hash map based on linked lists. This interface can also be used as a unordered set.
+// Intrusive hash map based on linked lists. This interface can also be used as
+// a unordered set.
 
-#ifndef HASHMAP_H 
-#define HASHMAP_H 
+#ifndef HASHMAP_H
+#define HASHMAP_H
 
 #include "buffer.h"
 #include "list.h"
@@ -11,7 +12,7 @@
 #define HM_INITIAL_BUCKET_SIZE 100
 
 // Default key types.
-extern struct hm_key_type intKeyType; 
+extern struct hm_key_type intKeyType;
 extern struct hm_key_type rangeKeyType;
 extern struct hm_key_type ptrKeyType;
 
@@ -19,7 +20,7 @@ struct hm_key {
     union {
         int i_key;
         range_t range_key;
-        
+
         // Depending on the key type ptr could either be extended key info
         // or the key itself(ptr key).
         void *ptr;
@@ -36,7 +37,7 @@ struct hm_key_type {
 // The intrusive entry part
 struct hm_bucket_entry {
     struct hm_key key;
-    struct list_head colisions; 
+    struct list_head colisions;
     void *entry;
 };
 
@@ -53,8 +54,8 @@ typedef struct {
     struct list_head *buckets;
     size_t bucketCount;
     size_t size;
-   
-    struct hm_key_type keyType; 
+
+    struct hm_key_type keyType;
 } hashmap_t;
 
 typedef struct {
@@ -81,21 +82,23 @@ void hashmap_rehash(hashmap_t *hm);
 void hashmap_free(hashmap_t *hm);
 
 // Set to hashmap.
-void hashmap_set(hashmap_t *hm, struct hm_key *key, struct hm_bucket_entry *entry);
+void hashmap_set(hashmap_t *hm, struct hm_key *key,
+                 struct hm_bucket_entry *entry);
 
 // Get from hashmap.
-struct hm_bucket_entry* hashmap_get(hashmap_t *hm, struct hm_key *key);
+struct hm_bucket_entry *hashmap_get(hashmap_t *hm, struct hm_key *key);
 
-// Remove from hashmap. 
+// Remove from hashmap.
 void hashmap_remove(hashmap_t *hm, struct hm_key *key);
 
-// -- Convinience methods -- 
+// -- Convinience methods --
 
 // Set range to hashset.
-void hashmap_setRange(hashmap_t *hm, range_t range, struct hm_bucket_entry *entry);
+void hashmap_setRange(hashmap_t *hm, range_t range,
+                      struct hm_bucket_entry *entry);
 
 // Get range from hashset.
-struct hm_bucket_entry* hashmap_getRange(hashmap_t *hm, range_t range);
+struct hm_bucket_entry *hashmap_getRange(hashmap_t *hm, range_t range);
 
 // Remove range from hashset.
 void hashmap_removeRange(hashmap_t *hm, range_t range);
@@ -104,7 +107,7 @@ void hashmap_removeRange(hashmap_t *hm, range_t range);
 void hashmap_setInt(hashmap_t *hm, int ikey, struct hm_bucket_entry *entry);
 
 // Get int from hashmap.
-struct hm_bucket_entry* hashmap_getInt(hashmap_t *hm, int ikey);
+struct hm_bucket_entry *hashmap_getInt(hashmap_t *hm, int ikey);
 
 // Remove int from hashset.
 void hashmap_removeInt(hashmap_t *hm, int ikey);
@@ -113,7 +116,7 @@ void hashmap_removeInt(hashmap_t *hm, int ikey);
 void hashmap_setPtr(hashmap_t *hm, void *key, struct hm_bucket_entry *entry);
 
 // Get pointer from the hashmap.
-struct hm_bucket_entry* hashmap_getPtr(hashmap_t *hm, void *key);
+struct hm_bucket_entry *hashmap_getPtr(hashmap_t *hm, void *key);
 
 // Remove ptr from hashset.
 void hashmap_removeInt(hashmap_t *hm, int ikey);
@@ -134,18 +137,18 @@ struct hashmap_it hashmap_it_init(hashmap_t *hm);
 void hashmap_it_next(struct hashmap_it *it);
 
 // Return 1 if this is the end of the iterator.
-int hashmap_it_end(struct hashmap_it *it); 
-struct hm_bucket_entry* hashmap_it_get(struct hashmap_it it);
+int hashmap_it_end(struct hashmap_it *it);
+struct hm_bucket_entry *hashmap_it_get(struct hashmap_it it);
 
 // -- Hash set --
 
 // Initialize the hashset.
 void hashset_init(hashset_t *hs, struct hm_key_type kType);
 
-//free the hashset
+// free the hashset
 void hashset_free(hashset_t *hs);
 
-// -- hashset convineience methods -- 
+// -- hashset convineience methods --
 
 // Insert pointer to hashset.
 int hashset_insertPtr(hashset_t *hs, void *ptr);
@@ -156,7 +159,7 @@ int hashset_existsPtr(hashset_t *hs, void *ptr);
 // Insert in to hashset
 int hashset_insertInt(hashset_t *hs, int ikey);
 
-// Check if int exists in hashset 
+// Check if int exists in hashset
 int hashset_existsInt(hashset_t *hs, int ikey);
 
 #endif

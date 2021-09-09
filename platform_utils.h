@@ -2,6 +2,6 @@
 #define PLATFORM_UTILS
 #include <stddef.h>
 
-void* allocate_executable(size_t size);
+void *allocate_executable(size_t size);
 
 #endif

@@ -1,16 +1,13 @@
 #include "list.h"
 
-
-int list_empty(struct list_head *lst) {
-    return lst == lst->next;
-}
+int list_empty(struct list_head *lst) { return lst == lst->next; }
 
 // adds the element at the end.
 void list_add(struct list_head *lst, struct list_head *e) {
-  e->next = lst;
-  e->prev = lst->prev;
-  lst->prev->next = e;
-  lst->prev = e;
+    e->next = lst;
+    e->prev = lst->prev;
+    lst->prev->next = e;
+    lst->prev = e;
 }
 
 void list_addAfter(struct list_head *b, struct list_head *e) {
@@ -21,7 +18,6 @@ void list_addAfter(struct list_head *b, struct list_head *e) {
 }
 
 void list_deattach(struct list_head *elem) {
-  elem->prev->next = elem->next;
-  elem->next->prev = elem->prev;
+    elem->prev->next = elem->next;
+    elem->next->prev = elem->prev;
 }
-

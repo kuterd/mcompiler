@@ -4,7 +4,7 @@
 struct ir_creator {
     // Variable to virtual register mapping.
     size_t regCount;
-    
+
     // Current Function.
     function_t *function;
 
@@ -15,6 +15,7 @@ struct ir_creator {
 };
 
 void ir_creator_init(struct ir_creator *creator, ir_context_t *ctx);
-function_t* ir_creator_createFunction(struct ir_creator *creator, struct ast_function *func);
+function_t *ir_creator_createFunction(struct ir_creator *creator,
+                                      struct ast_function *func);
 
 #endif

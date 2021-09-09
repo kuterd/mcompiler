@@ -3,18 +3,18 @@
 #ifndef DBUFFER_H
 #define DBUFFER_H
 
-#include <stdlib.h>
-#include <stdio.h>
-#include <string.h>
-#include <stdarg.h>
 #include <assert.h>
+#include <stdarg.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 
 #include "utils.h"
 
 #define DBUFFER_INIT 1000
 
-#define RANGE_STRING(str) ((range_t) {.ptr=(str), .size=sizeof(str) - 1})
-#define RANGE_COMPARE(r, s) range_cmp( (r), RANGE_STRING(s))
+#define RANGE_STRING(str) ((range_t){.ptr = (str), .size = sizeof(str) - 1})
+#define RANGE_COMPARE(r, s) range_cmp((r), RANGE_STRING(s))
 
 // Used to represent a memory range, like std::string_view
 typedef struct {
@@ -82,7 +82,7 @@ void dbuffer_ensureCap(dbuffer_t *dbuffer, size_t size);
 // remove a memory range from the dbuffer. this moves bytes around.
 void dbuffer_removeRange(dbuffer_t *dbuffer, size_t offset, size_t size);
 
-// push memory range. 
+// push memory range.
 void dbuffer_pushData(dbuffer_t *dbuffer, void *buffer, size_t size);
 
 // push null delimitered string.
@@ -91,10 +91,10 @@ void dbuffer_pushStr(dbuffer_t *dbuffer, void *str);
 // push char
 void dbuffer_pushChar(dbuffer_t *dbuffer, unsigned char ch);
 
-// Push litle endian bytes  
+// Push litle endian bytes
 void dbuffer_pushLong(dbuffer_t *dbuffer, unsigned long num, size_t bytes);
 
-// Push litle endian bytes  
+// Push litle endian bytes
 void dbuffer_pushInt(dbuffer_t *dbuffer, unsigned int num, size_t bytes);
 
 // push variable argument
@@ -113,7 +113,7 @@ void dbuffer_pushPtr(dbuffer_t *dbuffer, void *pointer);
 void dbuffer_popPtr(dbuffer_t *dbuffer);
 
 // get the last pointer value.
-void* dbuffer_getLastPtr(dbuffer_t *dbuffer);
+void *dbuffer_getLastPtr(dbuffer_t *dbuffer);
 
 // push unsigned int as str.
 void dbuffer_pushUIntHexStr(dbuffer_t *dbuffer, unsigned int number);
@@ -127,8 +127,8 @@ void dbuffer_pushIntStr(dbuffer_t *dbuffer, int number);
 // get as a range.
 range_t dbuffer_asRange(dbuffer_t *dbuffer);
 
-// get as a poiner list from the dbuffer. 
-void** dbuffer_asPtrArray(dbuffer_t *dbuffer, size_t *size);
+// get as a poiner list from the dbuffer.
+void **dbuffer_asPtrArray(dbuffer_t *dbuffer, size_t *size);
 
 // Swap the internals of dbuffers.
 void dbuffer_swap(dbuffer_t *a, dbuffer_t *b);
@@ -137,7 +137,5 @@ void dbuffer_swap(dbuffer_t *a, dbuffer_t *b);
 void dbuffer_clear(dbuffer_t *dbuffer);
 
 void dbuffer_free(dbuffer_t *dbuffer);
-
-
 
 #endif

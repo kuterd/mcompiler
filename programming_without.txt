@@ -10,3 +10,4 @@ www.x86-64.org/documentation/abi.pdf
 https://web.archive.org/web/20160801075139/https://www.x86-64.org/documentation/abi.pdf
 https://www.cs.rice.edu/~keith/EMBED/dom.pdf
 https://www.cs.princeton.edu/courses/archive/fall03/cs528/handouts/a%20fast%20algorithm%20for%20finding.pdf
+http://ssabook.gforge.inria.fr/latest/book.pdf

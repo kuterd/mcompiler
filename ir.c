@@ -365,6 +365,14 @@ void block_insert(basic_block_t *block, instruction_t *add) {
    list_add(&block->instructions, &add->inst_list);
 } 
 
+void block_numberInst(basic_block_t *block) {
+    size_t i = 0;
+    LIST_FOR_EACH(&block->instructions) {
+        instruction_t *inst = containerof(c, instruction_t, inst_list);
+        inst->i = i++; 
+    }
+}
+
 instruction_t* block_lastInstruction(basic_block_t *block) {
     if (list_empty(&block->instructions))
         return NULL;

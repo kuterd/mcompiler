@@ -91,11 +91,21 @@ typedef struct {
 struct function {
     // Function is a UNKNOWN_CONST PTR
     value_t value;
+
+    // The first block to execute.
     basic_block_t *entry;
-    struct list_head functions;
+
+    // Return type of this function.
     enum data_type returnType;
-    size_t argumentCount; 
+    
+    // Argument count of this function. 
+    size_t argumentCount;
+    
+    // Used for naming values that live inside this block.
     size_t valueNameCounter;
+    
+    // Function list entry for this function.  
+    struct list_head functions;
 };
 
 struct instruction;
@@ -132,6 +142,7 @@ struct instruction {
     enum instruction_type type;
      
     basic_block_t *parent;
+    size_t i; // instruction number, doesn't get updated automatically.
 };
 
 // The magic phi instruction, used for the SSA form.
@@ -306,6 +317,9 @@ void block_insertTop(basic_block_t *block, instruction_t *inst);
 // Insert a instruction at the end.
 void block_insert(basic_block_t *block, instruction_t *inst);
 
+// Renumber instructions in this block.
+void block_numberInst(basic_block_t *block);
+
 // Get the uses for a instruction.
 use_t** inst_getUses(instruction_t *inst, size_t *count);
 
@@ -323,7 +337,9 @@ struct block_predecessor_it {
 struct block_predecessor_it block_predecessor_begin(basic_block_t *block);
 
 int block_predecessor_end(struct block_predecessor_it it);
+
 struct block_predecessor_it block_predecessor_next(struct block_predecessor_it it);
+
 basic_block_t* block_predecessor_get(struct block_predecessor_it it);
 
 // iteartor of blocks that are can be branched from this block. 

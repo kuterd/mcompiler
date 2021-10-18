@@ -15,10 +15,18 @@
 // instructions that can jump to other blocks con only be the last instruction
 // inside a basic_block macro definition of instruction types. o(enum,
 // pretty_name)
-#define INSTRUCTIONS(o)                                                        \
-    o(INST_PHI, phi) o(INST_LOAD_VAR, load_var) o(INST_ASSIGN_VAR, assign_var) \
-        o(INST_BINARY, binary) o(INST_JUMP, jump) o(INST_JUMP_COND, jump_cond) \
-            o(INST_FUNCTION_CALL, function_call) o(INST_RETURN, return )
+
+// clang-format off
+#define INSTRUCTIONS(o)                   \
+    o(INST_PHI, phi)                      \
+    o(INST_LOAD_VAR, load_var)            \
+    o(INST_ASSIGN_VAR, assign_var)        \
+    o(INST_BINARY, binary)                \
+    o(INST_JUMP, jump)                    \
+    o(INST_JUMP_COND, jump_cond)          \
+    o(INST_FUNCTION_CALL, function_call)  \
+    o(INST_RETURN, return)
+// clang-format on
 
 // Names of instructions.
 extern char *kInstNames[];

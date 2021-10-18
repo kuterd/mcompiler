@@ -5,13 +5,35 @@
 #include "utils.h"
 #include "zone_alloc.h"
 
-#define TK_TOKEN_TYPES(o)                                                      \
-    o(TK_EEOF) o(TK_ERROR) o(TK_ID) o(TK_KW_WHILE) o(TK_KW_IF) o(TK_KW_ELSE)   \
-        o(TK_KW_VOID) o(TK_KW_INT64) o(TK_KW_RETURN) o(TK_PLUS) o(TK_MINUS)    \
-            o(TK_STRING) o(TK_MUL) o(TK_DIV) o(TK_NUMBER) o(TK_ASSIGN)         \
-                o(TK_EQUALS) o(TK_GREATER) o(TK_LESS_THAN) o(TK_LESS_EQ)       \
-                    o(TK_GREATER_EQ) o(TK_CURLY_OPEN) o(TK_CURLY_CLOSE)        \
-                        o(TK_PARAN_OPEN) o(TK_PARAN_CLOSE) o(TK_SEMI_COLON)
+// clang-format off
+#define TK_TOKEN_TYPES(o)  \
+    o(TK_EEOF)             \
+    o(TK_ERROR)            \
+    o(TK_ID)               \
+    o(TK_KW_WHILE)         \
+    o(TK_KW_IF)            \
+    o(TK_KW_ELSE)          \
+    o(TK_KW_VOID)          \
+    o(TK_KW_INT64)         \
+    o(TK_KW_RETURN)        \
+    o(TK_PLUS)             \
+    o(TK_MINUS)            \
+    o(TK_STRING)           \
+    o(TK_MUL)              \
+    o(TK_DIV)              \
+    o(TK_NUMBER)           \
+    o(TK_ASSIGN)           \
+    o(TK_EQUALS)           \
+    o(TK_GREATER)          \
+    o(TK_LESS_THAN)        \
+    o(TK_LESS_EQ)          \
+    o(TK_GREATER_EQ)       \
+    o(TK_CURLY_OPEN)       \
+    o(TK_CURLY_CLOSE)      \
+    o(TK_PARAN_OPEN)       \
+    o(TK_PARAN_CLOSE)      \
+    o(TK_SEMI_COLON)
+// clang-format on
 
 enum token_type { TK_TOKEN_TYPES(COMMA) };
 
@@ -21,12 +43,22 @@ struct token {
     range_t range;
 };
 
-#define AST_NODE_TYPE(o)                                                       \
-    o(NUMBER, number) o(STRING, string) o(VARIABLE, variable)                  \
-        o(BINARY_EXP, binary_exp) o(WHILE, while) o(IF, if) o(MODULE, module)  \
-            o(FUNCTION, function) o(FUNCTION_CALL, function_call)              \
-                o(BLOCK, block) o(PREFIX, prefix) o(RETURN, return )           \
-                    o(DECLARATION, declaration)
+// clang-format off
+#define AST_NODE_TYPE(o)                \
+    o(NUMBER, number)                   \
+    o(STRING, string)                   \
+    o(VARIABLE, variable)               \
+    o(BINARY_EXP, binary_exp)           \
+    o(WHILE, while)                     \
+    o(IF, if)                           \
+    o(MODULE, module)                   \
+    o(FUNCTION, function)               \
+    o(FUNCTION_CALL, function_call)     \
+    o(BLOCK, block)                     \
+    o(PREFIX, prefix)                   \
+    o(RETURN, return )                  \
+    o(DECLARATION, declaration)
+// clang-format on
 
 #define AST_TYPE(prefix) struct ast_##prefix
 #define AST_AS_TYPE(ptr, prefix) containerof(ptr, AST_TYPE(prefix), node)

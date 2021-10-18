@@ -6,11 +6,21 @@
 #define FIRST2(a, b, o) o(a)
 
 // FIXME: Not all of these token types are implemented.
-#define NAME_TOKENS(o, a)                                                      \
-    o(HEX_INT, "hex_int", a) o(HEX_UINT, "hex_uint", a) o(INT, "int", a)       \
-        o(UINT, "uint", a) o(DBUFFER, "dbuffer", a) o(RANGE, "range", a)       \
-            o(PRINTER, "printer", a) o(LIST, "list", a) o(NULL_STR, "str", a)  \
-                o(CURLY_OPEN, "co", a) o(CURLY_CLOSE, "cc", a)
+// clang-format off
+#define NAME_TOKENS(o, a)                       \
+    o(HEX_INT, "hex_int", a)                    \
+    o(HEX_UINT, "hex_uint", a)                  \
+    o(INT, "int", a)                            \
+    o(UINT, "uint", a)                          \
+    o(DBUFFER, "dbuffer", a)                    \
+    o(RANGE, "range", a)                        \
+    o(PRINTER, "printer", a)                    \
+    o(LIST, "list", a)                          \
+    o(NULL_STR, "str", a)                       \
+    o(CURLY_OPEN, "co", a)                      \
+    o(CURLY_CLOSE, "cc", a)
+
+// clang-format on
 
 #define TOKEN_TYPES(o) o(EEOF) o(ERROR) o(STRING) NAME_TOKENS(FIRST2, o)
 

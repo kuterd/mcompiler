@@ -587,14 +587,14 @@ basic_block_t *block_successor_get(struct block_successor_it it) {
     return it.next;
 }
 
-void _visit(basic_block_t *block, dbuffer_t *dbuffer, hashset_t *hashset) {
+void pre_visit(basic_block_t *block, dbuffer_t *dbuffer, hashset_t *hashset) {
     if (hashset_existsPtr(hashset, block))
         return;
     hashset_insertPtr(hashset, block);
 
     struct block_successor_it it = block_successor_begin(block);
     for (; !block_successor_end(it); it = block_successor_next(it)) {
-        _visit(dom, dbuffer, block_successor_get(it));
+        pre_visit(block_successor_get(it), dbuffer, hashset);
     }
 
     dbuffer_pushPtr(dbuffer, block);
@@ -606,8 +606,8 @@ basic_block_t** block_computePostorder(function_t *fn) {
     
     dbuffer_t postorder;
     dbuffer_init(&postorder);
-   
-    _visit(fn->entry, &postorder, &hashset); 
+
+    pre_visit(fn->entry, &postorder, &hashset);
 
     // It is safe to return dbuffers this way.
     return postorder.buffer;   

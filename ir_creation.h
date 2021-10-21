@@ -1,6 +1,9 @@
 #ifndef IR_CREATION_H
 #define IR_CREATION_H
 
+#include "ir.h"
+#include "parser.h"
+
 struct ir_creator {
     // Variable to virtual register mapping.
     size_t regCount;

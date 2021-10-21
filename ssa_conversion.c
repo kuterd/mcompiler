@@ -408,8 +408,44 @@ void ssa_convert(ir_context_t *ctx, function_t *fun, struct dominators *doms,
 
     ssa_rename(ctx, blockInfo, &variableMap, doms, fun->entry);
 
-    zone_free(&zone);
+    // ---- Done, free data and cleanup ----
+    vars =
+        (struct reg_info **)dbuffer_asPtrArray(&variableList, &variableCount);
 
-    // FIXME: There is many memory leaks here.
+    // cleanup variable info.
+    for (size_t i = 0; i < variableCount; i++) {
+        dbuffer_free(&vars[i]->assigns);
+        dbuffer_free(&vars[i]->valueStack);
+    }
+
+    // Free the contents of block info
+    for (size_t i = 0; i < doms->elementCount; i++) {
+        struct block_info *bInfo = &blockInfo[i];
+
+        // iterate over phi instructions and remove ones that are not needed.
+        size_t phiCount;
+        struct phi_info **phiList =
+            (struct phi_info **)dbuffer_asPtrArray(&bInfo->phiList, &phiCount);
+        for (size_t pI = 0; pI < phiCount; pI++) {
+            inst_phi_t *phiInst = phiList[pI]->phiInst;
+            // This phi instruction doesn't have any uses, we can just remove
+            // it.
+            if (!value_hasUse(&phiInst->inst.value))
+                inst_remove(&phiInst->inst);
+        }
+
+        hashmap_free(&bInfo->regMap);
+        dbuffer_free(&bInfo->regList);
+
+        hashmap_free(&bInfo->phiMap);
+        dbuffer_free(&bInfo->phiList);
+
+        dbuffer_free(&bInfo->loadAssigns);
+    }
+
+    zone_free(&zone);
+    dbuffer_free(&worklist);
+    hashmap_free(&variableMap);
+
     free(blockInfo);
 }

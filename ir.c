@@ -119,6 +119,8 @@ void value_replaceAllUses(value_t *value, value_t *replacement) {
     };
 }
 
+int value_hasUse(value_t *value) { return !list_empty(&value->uses); }
+
 void function_dump(ir_context_t *ctx, function_t *fun,
                    struct ir_print_annotations *annotations) {
     printf("%s function %.*s\n", kDataTypeNames[fun->returnType],
@@ -291,7 +293,8 @@ void inst_dumpd(ir_context_t *ctx, instruction_t *inst, dbuffer_t *dbuffer,
                 size_t dot) {
     if (inst->value.dataType != VOID) {
         range_t vName = value_getName(ctx, &inst->value);
-        format_dbuffer("%{range} = ", dbuffer, vName);
+        format_dbuffer("{str} %{range} = ", dbuffer,
+                       kDataTypeNames[inst->value.dataType], vName);
     }
     format_dbuffer("{str} ", dbuffer, kInstNames[inst->type]);
 

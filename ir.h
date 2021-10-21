@@ -233,7 +233,6 @@ struct ir_print_annotations {
     struct domfrontiers *df;
 };
 
-// set the name of the value. doesn't take ownership, creates a copy.
 void value_setName(ir_context_t *ctx, value_t *value, range_t name);
 
 // get the name of the value, this will assign a name if needed.
@@ -241,6 +240,9 @@ range_t value_getName(ir_context_t *ctx, value_t *value);
 
 // replace all uses of a value with another value.
 void value_replaceAllUses(value_t *value, value_t *replacement);
+
+// Check if a value has any users.
+int value_hasUse(value_t *value);
 
 // dump a function.
 void function_dump(ir_context_t *ctx, function_t *fun,

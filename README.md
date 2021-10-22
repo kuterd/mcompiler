@@ -1,5 +1,8 @@
 # SSA Based compiler targeting x86_64
 
+
+![IR dot image](https://github.com/kuterd/mcompiler/blob/master/ir_example.png?raw=true)
+
 ## Code structure:
  * `buffer.h` contains buffer utils, `dbuffer_t` range `position_t` etc.
  * `format.h` text formating, similar to printf but can output into a `dbuffer`.
